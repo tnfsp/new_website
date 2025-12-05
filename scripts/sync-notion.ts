@@ -1,5 +1,5 @@
 import { config as loadEnv } from "dotenv";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import { Client } from "@notionhq/client";
 import type {
@@ -24,6 +24,7 @@ type BlogEntry = {
   description?: string;
   excerpt?: string;
   readingTime?: string;
+  tags?: string[];
 };
 
 type ProjectEntry = {
@@ -34,6 +35,7 @@ type ProjectEntry = {
   type?: string;
   status?: string;
   date?: string;
+  image?: string;
 };
 
 type SiteConfig = Record<string, string>;
@@ -41,6 +43,8 @@ type SiteConfig = Record<string, string>;
 const BLOG_DIR = path.join(process.cwd(), "content", "blog");
 const SITE_CONFIG_PATH = path.join(process.cwd(), "content", "site", "config.json");
 const PROJECTS_PATH = path.join(process.cwd(), "content", "projects.json");
+const BLOG_ASSET_DIR = path.join(process.cwd(), "public", "content", "blog");
+const PROJECT_ASSET_DIR = path.join(process.cwd(), "public", "content", "projects");
 
 function getEnv(name: string): string | undefined {
   const value = process.env[name];
@@ -101,6 +105,11 @@ function richTextFromProperty(property: PageObjectResponse["properties"][string]
 function selectFromProperty(property: PageObjectResponse["properties"][string]) {
   if (property.type !== "select" || !property.select) return "";
   return property.select.name ?? "";
+}
+
+function multiSelectFromProperty(property: PageObjectResponse["properties"][string]) {
+  if (property.type !== "multi_select" || !property.multi_select) return [];
+  return property.multi_select.map((item) => item.name).filter(Boolean);
 }
 
 function dateFromProperty(property: PageObjectResponse["properties"][string]) {
@@ -192,6 +201,126 @@ function plainTextFromBlock(block: BlockObjectResponse): string {
   }
 }
 
+function safeExtFromUrl(url: string) {
+  try {
+    const { pathname } = new URL(url);
+    const ext = path.extname(pathname);
+    if (ext && ext.length <= 5) return ext;
+    return ".jpg";
+  } catch {
+    return ".jpg";
+  }
+}
+
+async function downloadImageForBlock(
+  block: BlockObjectResponse,
+  slug: string
+): Promise<string | undefined> {
+  if (block.type !== "image") return undefined;
+  const sourceUrl =
+    block.image.type === "file" ? block.image.file?.url : block.image.external?.url;
+  if (!sourceUrl) return undefined;
+
+  const assetDir = path.join(BLOG_ASSET_DIR, slug);
+  const ext = safeExtFromUrl(sourceUrl);
+  const filename = `${block.id}${ext}`;
+  const destPath = path.join(assetDir, filename);
+  const publicPath = `/content/blog/${slug}/${filename}`;
+
+  try {
+    await stat(destPath);
+    return publicPath;
+  } catch {
+    // file not found; proceed to download
+  }
+
+  try {
+    await mkdir(assetDir, { recursive: true });
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await writeFile(destPath, buffer);
+    return publicPath;
+  } catch (error) {
+    console.warn(
+      `[sync-notion] Failed to download image for ${slug} (${sourceUrl}):`,
+      (error as Error).message
+    );
+    return undefined;
+  }
+}
+
+async function downloadProjectImage(url: string, slug: string): Promise<string | undefined> {
+  const assetDir = path.join(PROJECT_ASSET_DIR, slug);
+  const ext = safeExtFromUrl(url);
+  const filename = `cover${ext}`;
+  const destPath = path.join(assetDir, filename);
+  const publicPath = `/content/projects/${slug}/${filename}`;
+
+  try {
+    await stat(destPath);
+    return publicPath;
+  } catch {
+    // file not found; proceed to download
+  }
+
+  try {
+    await mkdir(assetDir, { recursive: true });
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await writeFile(destPath, buffer);
+    return publicPath;
+  } catch (error) {
+    console.warn(
+      `[sync-notion] Failed to download project image for ${slug} (${url}):`,
+      (error as Error).message
+    );
+    return undefined;
+  }
+}
+
+async function renderBlocksWithAssets(blocks: BlockObjectResponse[], slug: string) {
+  const markdownParts: string[] = [];
+  const htmlParts: string[] = [];
+  const plainParts: string[] = [];
+
+  for (const block of blocks) {
+    if (block.type === "image") {
+      const caption = block.image.caption ? textFromRichText(block.image.caption) : "";
+      const downloaded = await downloadImageForBlock(block, slug);
+      if (downloaded) {
+        markdownParts.push(`![${caption || "image"}](${downloaded})`);
+        htmlParts.push(
+          `<figure><img src="${downloaded}" alt="${escapeHtml(
+            caption || "image"
+          )}" />${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ""}</figure>`
+        );
+      }
+      if (caption) plainParts.push(caption);
+      continue;
+    }
+
+    const md = convertBlockToMarkdown(block);
+    const html = convertBlockToHtml(block);
+    const plain = plainTextFromBlock(block);
+    if (md) markdownParts.push(md);
+    if (html) htmlParts.push(html);
+    if (plain) plainParts.push(plain);
+  }
+
+  return {
+    markdown: markdownParts.join("\n\n"),
+    html: htmlParts.join("\n"),
+    plainText: plainParts.join(" "),
+  };
+}
+
 function estimateReadingTime(text: string) {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   if (!words) return "";
@@ -252,6 +381,7 @@ async function fetchBlogEntries(): Promise<BlogEntry[]> {
     const publishedAt = dateFromProperty(props.PublishedAt);
     const description =
       richTextFromProperty(props.Description ?? props.Summary ?? props.Excerpt) || "";
+    const tags = multiSelectFromProperty(props.Tags ?? props.Tag ?? props.Labels ?? props.Label);
 
     if (!slug) {
       console.warn(`[sync-notion] Skipping page without slug: ${typedPage.id}`);
@@ -259,9 +389,10 @@ async function fetchBlogEntries(): Promise<BlogEntry[]> {
     }
 
     const blocks = await fetchAllBlocks(typedPage.id);
-    const content = blocks.map(convertBlockToMarkdown).filter(Boolean).join("\n\n");
-    const contentHtml = blocks.map(convertBlockToHtml).filter(Boolean).join("\n");
-    const plainText = blocks.map(plainTextFromBlock).filter(Boolean).join(" ");
+    const rendered = await renderBlocksWithAssets(blocks, slug);
+    const content = rendered.markdown;
+    const contentHtml = rendered.html;
+    const plainText = rendered.plainText;
     const readingTime = estimateReadingTime(plainText);
     const excerpt = buildExcerpt(plainText);
 
@@ -277,6 +408,7 @@ async function fetchBlogEntries(): Promise<BlogEntry[]> {
       description: description || undefined,
       excerpt: description || excerpt,
       readingTime,
+      tags,
     });
   }
 
@@ -326,6 +458,14 @@ function urlFromProperty(property: PageObjectResponse["properties"][string]) {
   return "";
 }
 
+function firstFileUrl(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "files" || !property.files?.length) return "";
+  const file = property.files[0];
+  if (file.type === "external") return file.external.url;
+  if (file.type === "file") return file.file.url;
+  return "";
+}
+
 async function fetchProjects(): Promise<ProjectEntry[]> {
   if (!PROJECTS_DATABASE_ID) {
     console.warn("[sync-notion] Missing NOTION_PROJECTS_DATABASE_ID. Skipping projects sync.");
@@ -350,6 +490,15 @@ async function fetchProjects(): Promise<ProjectEntry[]> {
     const type = selectFromProperty(props.Type);
     const status = selectFromProperty(props.Status);
     const date = dateFromProperty(props.Date);
+    const coverFromFiles =
+      firstFileUrl(props.Image || props.Cover || props.Hero || props.Thumbnail || props.Photo);
+    const coverFromPage = typedPage.cover
+      ? typedPage.cover.type === "file"
+        ? typedPage.cover.file?.url || ""
+        : typedPage.cover.external?.url || ""
+      : "";
+    const coverUrl = coverFromFiles || coverFromPage;
+    const image = coverUrl && slug ? await downloadProjectImage(coverUrl, slug) : undefined;
 
     if (!title) continue;
 
@@ -361,6 +510,7 @@ async function fetchProjects(): Promise<ProjectEntry[]> {
       type,
       status,
       date,
+      image,
     });
   }
 

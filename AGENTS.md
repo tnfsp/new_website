@@ -262,6 +262,14 @@ npm run sync:notion
 │  ├─ sections/
 │  └─ ui/
 └─ AGENTS.md
+
+# 🟢 Current state (2025-12-06)
+- Routes live: `/`, `/blog`, `/blog/[slug]`, `/daily`, `/daily/[slug]`, `/about`, `/links`, `/now`, `/murmur` (redirect), `/feed.xml`.
+- Navbar uses Home / Blog / Murmur / Daily / About / Links; Daily replaces Projects in nav.
+- Notion sync downloads images for Blog + Projects (Daily) into `public/content/...`; Blog also syncs `tags` (unused) and Type; Projects DB feeds Daily.
+- SiteConfig keys include: HomepageHeroTitle/Subitle/Intro/CTA, HomepageMurmurIntro/CTA, FooterText, AboutPageIntro/Body, AboutImage, BlogPageTitle/Intro, ProjectsPageTitle/Intro.
+- Murmur preview on homepage pulls `MURMUR_FEED_URL` (default rss.json) and shows yellow-highlighted snippets; feed errors are non-blocking.
+- RSS for blog at `/feed.xml`; set `NEXT_PUBLIC_SITE_URL` for correct absolute links.
 ```
 
 ---

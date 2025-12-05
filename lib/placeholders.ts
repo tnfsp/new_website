@@ -8,18 +8,23 @@ export type BlogPost = {
 };
 
 export const defaultSiteCopy = {
-  heroTitle: "趙玴祥 Yi-Hsiang Chao, MD",
-  heroSubtitle: "心臟外科醫師・寫作者・思考者",
+  heroTitle: "Yi-Hsiang Chao, MD",
+  heroSubtitle: "Cardiac surgeon ・ writer ・ slow thinker",
   heroIntro:
-    "我相信醫療不只是技術，也包含故事與人的重量。這裡紀錄我在手術房與書桌之間的所見所思。",
-  heroCTA: "閱讀最新文章 →",
+    "Medicine is technique and also story. This site gathers notes from the operating room and the writing desk.",
+  heroCTA: "Read the latest →",
   footerText: "wilsonchao.com — handwritten in small batches.",
   murmurIntro: "Daily fragments and half sentences live in murmur. It is a lighter, quicker feed.",
   murmurCTA: "Visit murmur →",
   aboutIntro:
     "I split time between the operating room, writing desk, and long walks with a notebook.",
   aboutBody:
-    "This site holds stories, questions, and unfinished threads. Long-form posts come from Notion; everyday fragments live in murmur."
+    "This site holds stories, questions, and unfinished threads. Long-form posts come from Notion; everyday fragments live in murmur.",
+  aboutImage: "",
+  blogTitle: "Articles & notes",
+  blogIntro: "Long-form writing on medicine, stories from the ward, and how to keep a craft humane.",
+  projectsTitle: "Daily notes",
+  projectsIntro: "Short daily entries — fragments, drafts, and small observations."
 };
 
 export const placeholderBlogs: BlogPost[] = [

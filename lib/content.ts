@@ -26,6 +26,7 @@ export type BlogEntry = {
   description?: string;
   excerpt?: string;
   readingTime?: string;
+  tags?: string[];
 };
 
 export type Project = {
@@ -36,6 +37,14 @@ export type Project = {
   type?: string;
   status?: string;
   date?: string;
+  image?: string;
+};
+
+export type MurmurEntry = {
+  title: string;
+  link: string;
+  description?: string;
+  pubDate?: string;
 };
 
 async function safeReadJSON<T>(filePath: string): Promise<T | null> {
@@ -60,6 +69,11 @@ export async function loadSiteCopy(): Promise<SiteCopy> {
     murmurCTA: file?.HomepageMurmurCTA || defaultSiteCopy.murmurCTA,
     aboutIntro: file?.AboutPageIntro || defaultSiteCopy.aboutIntro,
     aboutBody: file?.AboutPageBody || defaultSiteCopy.aboutBody,
+    aboutImage: file?.AboutImage || defaultSiteCopy.aboutImage,
+    blogTitle: file?.BlogPageTitle || defaultSiteCopy.blogTitle,
+    blogIntro: file?.BlogPageIntro || defaultSiteCopy.blogIntro,
+    projectsTitle: file?.ProjectsPageTitle || defaultSiteCopy.projectsTitle,
+    projectsIntro: file?.ProjectsPageIntro || defaultSiteCopy.projectsIntro,
   };
 }
 
@@ -173,6 +187,57 @@ export async function getProject(slug: string): Promise<Project | null> {
     projects.find((project) => slugFromHref(project.href) === slug) ??
     null
   );
+}
+
+const ENABLE_MURMUR_FEED = true;
+const DEFAULT_MURMUR_FEED =
+  process.env.MURMUR_FEED_URL || "https://murmur.wilsonchao.com/rss.json";
+
+export async function loadMurmurEntries(limit = 3): Promise<MurmurEntry[]> {
+  if (!ENABLE_MURMUR_FEED) return [];
+  const stripHtml = (value?: string) => {
+    if (!value) return "";
+    return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  };
+  try {
+    const res = await fetch(DEFAULT_MURMUR_FEED, {
+      // murmur feed already has caching headers; respect revalidate to avoid hammering
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as {
+      items?: {
+        title: string;
+        link: string;
+        description?: string;
+        content_text?: string;
+        pubDate?: string;
+        pub_date?: string;
+        date_published?: string;
+        published?: string;
+        date?: string;
+      }[];
+    };
+    const items = json.items ?? [];
+    return items.slice(0, limit).map((item) => {
+      const description =
+        item.description || item.content_text || stripHtml(item.content_html) || item.summary;
+      return {
+        title: item.title,
+        link: item.link,
+        description,
+        pubDate:
+          item.pubDate ||
+          item.pub_date ||
+          item.date_published ||
+          item.published ||
+          item.date,
+      };
+    });
+  } catch (error) {
+    console.warn("[content] Failed to load murmur feed:", (error as Error).message);
+    return [];
+  }
 }
 
 export { aboutPreview, linkItems };

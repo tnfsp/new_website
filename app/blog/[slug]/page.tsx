@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getBlogEntry } from "@/lib/content";
+import { getBlogEntry, loadBlogEntries } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -23,17 +23,18 @@ function fallbackHtmlFromContent(content?: string) {
     .join("");
 }
 
-export default async function BlogPostPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const entry = await getBlogEntry(slug);
 
   if (!entry) {
     notFound();
   }
+
+  const all = await loadBlogEntries();
+  const index = all.findIndex((post) => post.slug === slug);
+  const prev = index > 0 ? all[index - 1] : null;
+  const next = index >= 0 && index < all.length - 1 ? all[index + 1] : null;
 
   const bodyHtml = entry.contentHtml || fallbackHtmlFromContent(entry.content);
 
@@ -68,6 +69,28 @@ export default async function BlogPostPage({
           )}
         </div>
       </article>
+      {(prev || next) && (
+        <div className="flex justify-between border-t border-[var(--border)] pt-4 text-sm text-[var(--muted)]">
+          <div className="max-w-sm">
+            {prev ? (
+              <Link href={`/blog/${prev.slug}`} className="hover:text-[var(--accent)]">
+                ← {prev.title}
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+          <div className="max-w-sm text-right">
+            {next ? (
+              <Link href={`/blog/${next.slug}`} className="hover:text-[var(--accent)]">
+                {next.title} →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

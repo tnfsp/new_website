@@ -1,6 +1,6 @@
 # wilsonchao.com
 
-Next.js (App Router) + TypeScript + Tailwind skeleton for Dr. Yi-Hsiang Chao’s site. The layout follows the quiet, sepia-inspired look of murmur.wilsonchao.com: narrow column, soft borders, text-first.
+Next.js (App Router) + TypeScript + Tailwind site for Dr. Yi-Hsiang Chao. Visual style follows murmur.wilsonchao.com: narrow column, soft borders, text-first.
 
 ## Stack
 - Next.js 16 (App Router)
@@ -14,36 +14,30 @@ Next.js (App Router) + TypeScript + Tailwind skeleton for Dr. Yi-Hsiang Chao’s
 3. Lint: `npm run lint`
 4. Build: `npm run build`
 5. Sync Notion content: `npm run sync:notion`
-   - Env vars required: `NOTION_TOKEN`, `NOTION_BLOG_DATABASE_ID`, `NOTION_SITE_CONFIG_DATABASE_ID`
-   - Writes to `content/blog/*.json` and `content/site/config.json`; missing env vars will skip sync gracefully.
-   - Script runs with `node --no-deprecation --import ./scripts/register-ts-node.mjs` to avoid noisy deprecation/experimental warnings.
+   - Env vars: `NOTION_TOKEN`, `NOTION_BLOG_DATABASE_ID`, `NOTION_SITE_CONFIG_DATABASE_ID`, optional `NOTION_PROJECTS_DATABASE_ID`
+   - Writes to `content/blog/*.json`, `content/site/config.json`, `content/projects.json`; missing env vars skip sync gracefully.
+   - Runs with `node --no-deprecation --import ./scripts/register-ts-node.mjs`.
 
 ## Project structure
-- `app/` – App Router pages (`/`, `/blog`, `/blog/[slug]`, `/projects`, `/about`, `/links`, `/now`, `/murmur` redirect).
-- `components/` – layout/sections/ui folders ready for shared components.
-- `content/` – placeholder JSON:
-  - `content/blog/*.json` – Blog entries (Notion export target).
-  - `content/site/config.json` – Homepage copy from SiteConfig DB.
-- `lib/placeholders.ts` – Temporary data + fallbacks until Notion sync is live.
-- `public/` – static assets.
-- `scripts/sync-notion.ts` – Syncs Blog + SiteConfig from Notion into `content/` (markdown + HTML + reading time).
+- `app/` – pages (`/`, `/blog`, `/blog/[slug]`, `/daily`, `/daily/[slug]`, `/about`, `/links`, `/now`, `/murmur` redirect, `/feed.xml`).
+- `components/` – layout/sections/ui.
+- `content/` – JSON data:
+  - `content/blog/*.json` – Blog entries (from Notion).
+  - `content/site/config.json` – Site copy from SiteConfig DB.
+  - `content/projects.json` – Daily entries (from Notion projects DB).
+- `lib/placeholders.ts` – fallbacks.
+- `public/` – static assets + synced images under `public/content/...`.
+- `scripts/sync-notion.ts` – Syncs blog/site config/projects; downloads images for blog + projects.
 
 ## Notes
-- `/murmur` redirects to `https://murmur.wilsonchao.com` (murmur stays a separate project).
-- SiteConfig keys missing in `content/site/config.json` should fall back to defaults; the build should not fail because of missing copy.
-- Pages read from `content/` JSON; if files are absent or empty, placeholders are used (see `lib/content.ts` + `lib/placeholders.ts`).
-- Tailwind is kept minimal to match murmur’s text-first aesthetic; avoid heavy UI kits per `AGENTS.md`.
-- Blog detail pages now render Notion-exported HTML (with a plain-text fallback) and show estimated reading time.
-- Automation: `.github/workflows/sync-and-deploy.yml` runs daily (02:30 UTC) or manually; it installs deps, runs `npm run sync:notion` with repo secrets, and then hits a deploy hook. Set one of `VERCEL_DEPLOY_HOOK_URL` or `CF_PAGES_DEPLOY_HOOK_URL`.
+- Missing SiteConfig keys fall back to defaults (build won’t fail).
+- Pages read from `content/`; placeholders used if files absent.
+- Tailwind kept minimal to match murmur aesthetic; avoid heavy UI kits.
+- Blog detail renders Notion HTML (with plain-text fallback) and shows reading time; filtering uses `?type=`.
+- Daily lives under `/daily`; type filter supported; prev/next navigation on entries.
+- Murmur preview pulls `MURMUR_FEED_URL` (default `https://murmur.wilsonchao.com/rss.json`), highlights snippet in yellow; `/murmur` redirects out.
+- RSS for blog at `/feed.xml` (set `NEXT_PUBLIC_SITE_URL` for absolute links).
+- CI: `.github/workflows/sync-and-deploy.yml` runs daily (02:30 UTC) or manual; runs sync + deploy hook (set `VERCEL_DEPLOY_HOOK_URL` or `CF_PAGES_DEPLOY_HOOK_URL`).
 
 ## Changelog
-
-- 2025-12-05: Added /projects/[slug] detail page with Notion-synced data; fixed blog params for React 19/Next 16; validated project hrefs; added `.env.local.example`; refreshed homepage copy; synced latest Notion content (blog/site/projects).
-- 2025-12-05: Fixed blog dynamic params for React 19/Next 16, added `.env.local.example`, validated project hrefs (skip invalid links), pulled latest Notion content (blog, site copy, projects), and refreshed homepage copy.
-
-### Vercel deploy tips
-- Build command: `npm run sync:notion && npm run build` (so Notion data is pulled during build).
-- Set env vars in Vercel: `NOTION_TOKEN`, `NOTION_BLOG_DATABASE_ID`, `NOTION_SITE_CONFIG_DATABASE_ID` (and optionally `NODE_VERSION=20`).
-- To auto-refresh from Notion, create a Vercel deploy hook and set `VERCEL_DEPLOY_HOOK_URL` as a GitHub secret; the scheduled workflow will call it nightly.
-- About page can optionally read from a blog entry with `Type=About` (uses Notion contentHtml fallback if present).
-- Projects can sync from Notion if `NOTION_PROJECTS_DATABASE_ID` is provided; otherwise it reads `content/projects.json`.
+- 2025-12-06: Added Daily route (/daily), type filters, prev/next for Daily & Blog, murmur preview with feed parsing and yellow highlight, image sync for projects/blog, navbar updates.

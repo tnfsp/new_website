@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdf8f2;
-  --foreground: #1f1a14;
-  --muted: #625548;
-  --accent: #b27749;
-  --border: #e8ddcf;
+  --background: #f4f1ec;
+  --foreground: #111111;
+  --muted: #5c5c54;
+  --accent: #ff4500;
+  --border: rgba(0, 0, 0, 0.08);
 }
 
 @theme inline {
@@ -44,8 +44,8 @@ a:focus-visible {
 
 .page-shell {
   margin: 0 auto;
-  max-width: 880px;
-  padding: 3.5rem 1.5rem 3rem;
+  max-width: 800px;
+  padding: 2.75rem 1.25rem 3rem;
 }
 
 .section-block {

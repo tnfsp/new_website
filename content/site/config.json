@@ -1,11 +1,15 @@
 {
-  "HomepageHeroTitle": "0",
-  "HomepageHeroSubtitle": "1",
-  "FooterText": "4",
-  "HomepageMurmurIntro": "7",
-  "HomepageIntro": "2",
-  "AboutPageBody": "6",
-  "HomepageMurmurCTA": "8",
-  "HomepageCTA": "3",
-  "AboutPageIntro": "5"
+  "HomepageHeroTitle": "趙玴祥 Yi-Hsiang Chao, MD",
+  "HomepageHeroSubtitle": "心臟外科醫師・寫作者・思考者",
+  "ProjectsPageTitle": "研究與進行中的專案",
+  "FooterText": "wilsonchao.com — 手寫更新",
+  "HomepageMurmurIntro": "murmur 是我每日的腦內記事，零碎想法與待讀清單都放在這裡。",
+  "HomepageIntro": "我相信醫療不只是技術，也包含故事、耐心與人的重量。這裡紀錄我在手術室內外的思考。",
+  "AboutPageBody": "我關注心臟外科的技術與倫理，也記錄醫療現場的故事、個人成長與創作練習。這裡是我放慢速度思考的地方，邀\n請你一起閱讀與對話。",
+  "BlogPageTitle": "長文與手術間的筆記",
+  "ProjectsPageIntro": "手術筆記、研究途徑、側寫與設計實驗的集合，隨著進度不定期更新。",
+  "HomepageMurmurCTA": "前往 murmur →",
+  "HomepageCTA": "閱讀最新文章 →",
+  "AboutPageIntro": "我在高醫做心臟外科，寫字、講故事，練習在密集節奏裡保持耐心。",
+  "BlogPageIntro": "醫療現場、敘事與慢下來的練習，讓技術與故事一起被看見。"
 }
