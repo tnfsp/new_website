@@ -87,9 +87,9 @@ export const aboutPreview =
   "I split time between the operating room, writing desk, and long walks with a notebook. This site holds the stories, questions, and unfinished threads.";
 
 export const linkItems = [
-  { label: "Blog", href: "/blog" },
-  { label: "Projects", href: "/projects" },
   { label: "About", href: "/about" },
-  { label: "Murmur", href: "/murmur", external: true },
-  { label: "Telegram", href: "https://t.me/wilsonchao", external: true }
+  { label: "Website", href: "/" },
+  { label: "Murmur", href: "https://murmur.wilsonchao.com", external: true },
+  { label: "Instagram", href: "https://www.instagram.com/momobear_doctor", external: true },
+  { label: "Telegram", href: "https://t.me/doctormomo", external: true }
 ];
