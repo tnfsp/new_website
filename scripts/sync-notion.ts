@@ -107,8 +107,8 @@ function selectFromProperty(property: PageObjectResponse["properties"][string]) 
   return property.select.name ?? "";
 }
 
-function multiSelectFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type !== "multi_select" || !property.multi_select) return [];
+function multiSelectFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "multi_select" || !property.multi_select) return [];
   return property.multi_select.map((item) => item.name).filter(Boolean);
 }
 
