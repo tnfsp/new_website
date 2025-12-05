@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { linkItems } from "@/lib/content";
+import { linkItems, loadSiteCopy } from "@/lib/content";
 
-export default function LinksPage() {
+export default async function LinksPage() {
+  const copy = await loadSiteCopy();
   return (
     <main className="page-shell space-y-4">
       <header className="space-y-2 text-center">
         <span className="section-title">Links</span>
-        <h1 className="text-3xl font-semibold text-[var(--foreground)]">Hello there</h1>
-        <p className="text-base text-[var(--muted)]">
-          Quick paths to the places I write and share updates.
-        </p>
+        <h1 className="text-3xl font-semibold text-[var(--foreground)]">{copy.linksTitle}</h1>
+        <p className="text-base text-[var(--muted)]">{copy.linksIntro}</p>
       </header>
 
       <div className="mx-auto flex max-w-md flex-col gap-3">

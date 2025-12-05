@@ -25,6 +25,9 @@ export const defaultSiteCopy = {
   blogIntro: "Long-form writing on medicine, stories from the ward, and how to keep a craft humane.",
   projectsTitle: "Daily notes",
   projectsIntro: "Short daily entries — fragments, drafts, and small observations."
+  ,
+  linksTitle: "Hello there",
+  linksIntro: "Quick paths to the places I write and share updates."
 };
 
 export const placeholderBlogs: BlogPost[] = [

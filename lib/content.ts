@@ -75,6 +75,8 @@ export async function loadSiteCopy(): Promise<SiteCopy> {
     blogIntro: file?.BlogPageIntro || defaultSiteCopy.blogIntro,
     projectsTitle: file?.ProjectsPageTitle || defaultSiteCopy.projectsTitle,
     projectsIntro: file?.ProjectsPageIntro || defaultSiteCopy.projectsIntro,
+    linksTitle: file?.LinksPageTitle || defaultSiteCopy.linksTitle,
+    linksIntro: file?.LinksPageIntro || defaultSiteCopy.linksIntro,
   };
 }
 
