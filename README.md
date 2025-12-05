@@ -37,6 +37,8 @@ Next.js (App Router) + TypeScript + Tailwind skeleton for Dr. Yi-Hsiang Chao’s
 - Automation: `.github/workflows/sync-and-deploy.yml` runs daily (02:30 UTC) or manually; it installs deps, runs `npm run sync:notion` with repo secrets, and then hits a deploy hook. Set one of `VERCEL_DEPLOY_HOOK_URL` or `CF_PAGES_DEPLOY_HOOK_URL`.
 
 ## Changelog
+
+- 2025-12-05: Added /projects/[slug] detail page with Notion-synced data; fixed blog params for React 19/Next 16; validated project hrefs; added `.env.local.example`; refreshed homepage copy; synced latest Notion content (blog/site/projects).
 - 2025-12-05: Fixed blog dynamic params for React 19/Next 16, added `.env.local.example`, validated project hrefs (skip invalid links), pulled latest Notion content (blog, site copy, projects), and refreshed homepage copy.
 
 ### Vercel deploy tips

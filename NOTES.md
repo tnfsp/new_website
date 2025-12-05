@@ -7,7 +7,7 @@
 - Dev: npm install, then npm run dev (Turbopack). Lint/build: npm run lint / npm run build.
 
 ## Next tasks
-1) Set env vars and run npm run sync:notion to pull real Notion data into content/.
-2) Frontend: read content JSONs (with fallbacks), add shared layout/section components, refine spacing/RWD.
-3) Deployment: pick Cloudflare Pages or Zeabur and document deploy steps/env vars.
-4) Optional: add tests/lint rules and remove placeholder copy once Notion data is live.
+1) Add project link in Notion for "Published" item if needed; ensure it starts with "/" or "http" and rerun npm run sync:notion.
+2) Fill real copy in Notion SiteConfig (hero/about/footer) and resync to replace placeholder numbers.
+3) Start npm run dev when reviewing locally (stopped after cleanup); verify /projects, /blog/[slug] navigation.
+4) Keep README changelog updated for future changes per workflow agreement.

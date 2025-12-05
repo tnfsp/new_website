@@ -28,7 +28,7 @@ export type BlogEntry = {
   readingTime?: string;
 };
 
-type Project = {
+export type Project = {
   title: string;
   description?: string;
   href?: string;
@@ -156,6 +156,11 @@ export async function loadProjects(): Promise<Project[]> {
   }));
 
   return cleaned.length > 0 ? cleaned : published;
+}
+
+export async function getProject(slug: string): Promise<Project | null> {
+  const projects = await loadProjects();
+  return projects.find((project) => project.slug === slug) ?? null;
 }
 
 export { aboutPreview, linkItems };
