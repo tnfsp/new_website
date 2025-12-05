@@ -23,6 +23,7 @@ export type BlogEntry = {
   publishedAt?: string;
   content?: string;
   contentHtml?: string;
+  description?: string;
   excerpt?: string;
   readingTime?: string;
 };
