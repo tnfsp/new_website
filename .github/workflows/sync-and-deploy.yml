@@ -1,0 +1,46 @@
+name: Sync Notion and deploy
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 02:30 UTC; adjust as needed.
+    - cron: "30 2 * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Notion content
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_BLOG_DATABASE_ID: ${{ secrets.NOTION_BLOG_DATABASE_ID }}
+          NOTION_SITE_CONFIG_DATABASE_ID: ${{ secrets.NOTION_SITE_CONFIG_DATABASE_ID }}
+        run: npm run sync:notion
+
+      - name: Trigger Vercel deploy hook
+        if: success() && env.VERCEL_DEPLOY_HOOK_URL != ''
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: curl -X POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: Trigger Cloudflare Pages deploy hook
+        if: success() && env.CF_PAGES_DEPLOY_HOOK_URL != ''
+        env:
+          CF_PAGES_DEPLOY_HOOK_URL: ${{ secrets.CF_PAGES_DEPLOY_HOOK_URL }}
+        run: curl -X POST "$CF_PAGES_DEPLOY_HOOK_URL"

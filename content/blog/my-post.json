@@ -1,0 +1,12 @@
+{
+  "id": "2c0bd17b-5bf9-8067-a959-f8e719b56e38",
+  "slug": "my-post",
+  "title": "TEST",
+  "type": "Medical",
+  "status": "Published",
+  "publishedAt": "2025-12-05",
+  "content": "TESTTEST",
+  "contentHtml": "<p>TESTTEST</p>",
+  "excerpt": "TESTTEST",
+  "readingTime": "1 min"
+}
