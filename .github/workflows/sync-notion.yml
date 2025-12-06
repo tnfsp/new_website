@@ -1,0 +1,47 @@
+name: Sync Notion Content
+
+on:
+  schedule:
+    - cron: "0 0,12 * * *" # 00:00 UTC, 12:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync from Notion
+        run: npm run sync:notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_BLOG_DATABASE_ID: ${{ secrets.NOTION_BLOG_DATABASE_ID }}
+          NOTION_SITE_CONFIG_DATABASE_ID: ${{ secrets.NOTION_SITE_CONFIG_DATABASE_ID }}
+          NOTION_PROJECTS_DATABASE_ID: ${{ secrets.NOTION_PROJECTS_DATABASE_ID }}
+
+      - name: Commit changes
+        run: |
+          git config user.name "Notion Sync Bot"
+          git config user.email "actions@github.com"
+          git status --short
+          if [ -n "$(git status --porcelain content public/content)" ]; then
+            git add content public/content
+            git commit -m "chore: sync notion [skip ci]"
+            git push
+          else
+            echo "No content changes."
+          fi
