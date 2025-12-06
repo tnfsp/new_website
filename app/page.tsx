@@ -40,7 +40,6 @@ export default async function Home() {
             {siteCopy.heroCTA}
           </Link>
         </div>
-        <ViewStats storageKey="home" />
       </header>
 
       <section className="section-block">
@@ -176,6 +175,9 @@ export default async function Home() {
 
       <footer className="pt-6 text-sm text-[var(--muted)]">
         {siteCopy.footerText}
+        <div className="pt-3">
+          <ViewStats slug="home" />
+        </div>
       </footer>
     </main>
   );
