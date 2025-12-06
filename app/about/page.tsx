@@ -40,7 +40,6 @@ export default async function AboutPage() {
             ) : null}
             <div className="space-y-1">
               <h1 className="text-3xl font-semibold text-[var(--foreground)]">{copy.aboutName}</h1>
-              <p className="max-w-2xl text-base text-[var(--muted)]">{copy.aboutIntro}</p>
             </div>
           </div>
         </div>
