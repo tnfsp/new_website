@@ -15,7 +15,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "wilsonchao.com",
-  description: "The home for Yi-Hsiang Chao, MD — surgery, writing, and slow thinking.",
+  description: "The home for Yi-Hsiang Chao, MD – surgery, writing, and slow thinking.",
+  alternates: {
+    types: {
+      "application/rss+xml": "/feed.xml",
+    },
+  },
 };
 
 export default function RootLayout({
