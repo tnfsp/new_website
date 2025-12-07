@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogEntry, loadBlogEntries } from "@/lib/content";
@@ -59,11 +60,15 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <ViewCounter slug={entry.slug} />
         {entry.image ? (
           <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-            <img
+            <Image
               src={entry.image}
               alt={entry.title}
+              width={1200}
+              height={630}
               className="w-full object-cover"
-              loading="lazy"
+              sizes="100vw"
+              unoptimized
+              priority={false}
             />
           </div>
         ) : null}

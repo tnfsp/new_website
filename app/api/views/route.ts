@@ -8,9 +8,9 @@ const hasKV = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOK
 type Counts = { today: number; total: number };
 
 const memoryStore: Map<string, Counts> =
-  // @ts-ignore
+  // @ts-expect-error store on global for in-memory fallback across requests
   globalThis.__VIEW_MEMORY__ ?? new Map<string, Counts>();
-// @ts-ignore
+// @ts-expect-error same as above
 globalThis.__VIEW_MEMORY__ = memoryStore;
 
 async function incrementWithKV(slug: string): Promise<Counts> {

@@ -19,7 +19,7 @@ Next.js (App Router) + TypeScript + Tailwind site for Dr. Yi-Hsiang Chao. Visual
    - Runs with `node --no-deprecation --import ./scripts/register-ts-node.mjs`.
 
 ## Project structure
-- `app/` – pages (`/`, `/blog`, `/blog/[slug]`, `/daily`, `/daily/[slug]`, `/about`, `/links`, `/now`, `/murmur` redirect, `/feed.xml`).
+- `app/` – pages (`/`, `/blog`, `/blog/[slug]`, `/daily`, `/daily/[slug]`, `/about`, `/links`, `/now`, `/murmur` redirect, `/feed.xml`, `/daily/feed.xml`).
 - `components/` – layout/sections/ui.
 - `content/` – JSON data:
   - `content/blog/*.json` – Blog entries (from Notion).
@@ -36,7 +36,7 @@ Next.js (App Router) + TypeScript + Tailwind site for Dr. Yi-Hsiang Chao. Visual
 - Blog detail renders Notion HTML (with plain-text fallback) and shows reading time; filtering uses `?type=`.
 - Daily lives under `/daily`; type filter supported; prev/next navigation on entries.
 - Murmur preview pulls `MURMUR_FEED_URL` (default `https://murmur.wilsonchao.com/rss.json`), highlights snippet in yellow; `/murmur` redirects out.
-- RSS for blog at `/feed.xml` (set `NEXT_PUBLIC_SITE_URL` for absolute links).
+- RSS: blog at `/feed.xml` (alias `/feed`), daily at `/daily/feed.xml` (alias `/daily/feed`); set `NEXT_PUBLIC_SITE_URL` for absolute links.
 - CI: `.github/workflows/sync-and-deploy.yml` runs daily (02:30 UTC) or manual; runs sync + deploy hook (set `VERCEL_DEPLOY_HOOK_URL` or `CF_PAGES_DEPLOY_HOOK_URL`).
 
 ## Changelog

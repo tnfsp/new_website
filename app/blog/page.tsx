@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { loadBlogEntries, loadSiteCopy } from "@/lib/content";
 
@@ -79,11 +80,15 @@ export default async function BlogIndexPage({
           >
             {post.image ? (
               <div className="mb-3 overflow-hidden rounded-md border border-[var(--border)]">
-                <img
+                <Image
                   src={post.image}
                   alt={post.title}
+                  width={900}
+                  height={400}
                   className="h-40 w-full object-cover"
-                  loading="lazy"
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  unoptimized
+                  priority={false}
                 />
               </div>
             ) : null}

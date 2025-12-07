@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { loadSiteCopy } from "@/lib/content";
 
 function escapeHtml(text: string) {
@@ -30,12 +31,14 @@ export default async function AboutPage() {
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-4">
             {copy.aboutImage ? (
-              // Use plain img to avoid remote domain config; suggest storing in /public.
-              <img
+              <Image
                 src={copy.aboutImage}
                 alt="Portrait"
+                width={80}
+                height={80}
                 className="h-20 w-20 rounded-full border border-[var(--border)] object-cover"
-                loading="lazy"
+                unoptimized
+                priority={false}
               />
             ) : null}
             <div className="space-y-1">

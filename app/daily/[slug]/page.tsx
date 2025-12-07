@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject, loadProjects } from "@/lib/content";
@@ -34,11 +35,15 @@ export default async function DailyEntryPage({ params }: { params: Promise<{ slu
         ) : null}
         {entry.image ? (
           <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-            <img
+            <Image
               src={entry.image}
               alt={entry.title}
+              width={1200}
+              height={630}
               className="w-full object-cover"
-              loading="lazy"
+              sizes="100vw"
+              unoptimized
+              priority={false}
             />
           </div>
         ) : null}

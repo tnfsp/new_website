@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { loadProjects, loadSiteCopy } from "@/lib/content";
 
@@ -78,11 +79,15 @@ export default async function DailyPage({
           >
             {project.image ? (
               <div className="mb-3 overflow-hidden rounded-md border border-[var(--border)]">
-                <img
+                <Image
                   src={project.image}
                   alt={project.title}
+                  width={800}
+                  height={360}
                   className="h-36 w-full object-cover"
-                  loading="lazy"
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  unoptimized
+                  priority={false}
                 />
               </div>
             ) : null}
