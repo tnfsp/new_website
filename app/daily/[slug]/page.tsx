@@ -59,7 +59,7 @@ export default async function DailyEntryPage({ params }: { params: Promise<{ slu
           </pre>
         ) : null}
       </article>
-      <Comments term={`daily-${entry.slug || entry.title}`} />
+      <Comments />
 
       {(prev || next) && (
         <div className="flex justify-between border-t border-[var(--border)] pt-4 text-sm text-[var(--muted)]">

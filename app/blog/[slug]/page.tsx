@@ -87,7 +87,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           )}
         </div>
       </article>
-      <Comments term={`blog-${entry.slug}`} />
+      <Comments />
       {(prev || next) && (
         <div className="flex justify-between border-t border-[var(--border)] pt-4 text-sm text-[var(--muted)]">
           <div className="max-w-sm">

@@ -37,7 +37,7 @@ Next.js (App Router) + TypeScript + Tailwind site for Dr. Yi-Hsiang Chao. Visual
 - Daily lives under `/daily`; type filter supported; prev/next navigation on entries.
 - Murmur preview pulls `MURMUR_FEED_URL` (default `https://murmur.wilsonchao.com/rss.json`), highlights snippet in yellow; `/murmur` redirects out.
 - RSS: combined blog + daily at `/feed.xml` (alias `/feed`); legacy daily-only feed remains at `/daily/feed.xml` (alias `/daily/feed`); set `NEXT_PUBLIC_SITE_URL` for absolute links.
-- Comments: giscus embed (set `NEXT_PUBLIC_GISCUS_*`; renders only when IDs are provided).
+- Comments: giscus embed (set `NEXT_PUBLIC_GISCUS_*`; renders only when IDs are provided). Defaults: mapping pathname, theme `preferred_color_scheme`, lang `zh-TW`, strict `0`; override via env if needed.
 - Subscribe: Buttondown link added to Links page (`NEXT_PUBLIC_BUTTONDOWN_URL`).
 - CI: `.github/workflows/sync-and-deploy.yml` runs daily (02:30 UTC) or manual; runs sync + deploy hook (set `VERCEL_DEPLOY_HOOK_URL` or `CF_PAGES_DEPLOY_HOOK_URL`).
 
