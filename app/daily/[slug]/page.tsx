@@ -30,10 +30,7 @@ export default async function DailyEntryPage({ params }: { params: Promise<{ slu
         </p>
         <h1 className="text-3xl font-semibold leading-tight text-[var(--foreground)]">{entry.title}</h1>
         <p className="text-sm text-[var(--muted)]">{entry.date}</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <ViewCounter slug={entry.slug || entry.title} />
-          <LikeButton slug={`daily:${entry.slug || entry.title}`} />
-        </div>
+        <ViewCounter slug={entry.slug || entry.title} />
         {entry.description ? (
           <p className="text-base text-[var(--muted)] leading-relaxed">{entry.description}</p>
         ) : null}
@@ -61,6 +58,9 @@ export default async function DailyEntryPage({ params }: { params: Promise<{ slu
             {entry.content}
           </pre>
         ) : null}
+        <div className="pt-4">
+          <LikeButton slug={`daily:${entry.slug || entry.title}`} />
+        </div>
       </article>
       {(prev || next) && (
         <div className="flex justify-between border-t border-[var(--border)] pt-4 text-sm text-[var(--muted)]">

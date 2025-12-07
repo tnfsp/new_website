@@ -58,10 +58,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           {entry.publishedAt}
           {entry.readingTime ? ` · ${entry.readingTime}` : ""}
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <ViewCounter slug={entry.slug} />
-          <LikeButton slug={`blog:${entry.slug}`} />
-        </div>
+        <ViewCounter slug={entry.slug} />
         {entry.image ? (
           <div className="overflow-hidden rounded-lg border border-[var(--border)]">
             <Image
@@ -88,6 +85,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           ) : (
             <p>No content available yet. Check back soon.</p>
           )}
+        </div>
+        <div className="pt-4">
+          <LikeButton slug={`blog:${entry.slug}`} />
         </div>
       </article>
       {(prev || next) && (
