@@ -11,6 +11,7 @@ const repo = process.env.NEXT_PUBLIC_GISCUS_REPO || "tnfsp/new_website";
 const repoId = process.env.NEXT_PUBLIC_GISCUS_REPO_ID;
 const category = process.env.NEXT_PUBLIC_GISCUS_CATEGORY;
 const categoryId = process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID;
+const theme = process.env.NEXT_PUBLIC_GISCUS_THEME || "preferred_color_scheme";
 
 export function Comments({ term }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,7 +35,7 @@ export function Comments({ term }: Props) {
     script.setAttribute("data-reactions-enabled", "1");
     script.setAttribute("data-emit-metadata", "0");
     script.setAttribute("data-input-position", "bottom");
-    script.setAttribute("data-theme", "light");
+    script.setAttribute("data-theme", theme);
     script.setAttribute("data-loading", "lazy");
     script.setAttribute("crossorigin", "anonymous");
 
