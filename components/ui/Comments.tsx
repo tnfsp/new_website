@@ -28,12 +28,14 @@ export function Comments({ term }: Props) {
     script.setAttribute("data-repo-id", repoId);
     script.setAttribute("data-category", category);
     script.setAttribute("data-category-id", categoryId);
+    // Use pathname mapping by default; allow explicit term override.
     script.setAttribute("data-mapping", term ? "specific" : "pathname");
     if (term) script.setAttribute("data-term", term);
     script.setAttribute("data-reactions-enabled", "1");
     script.setAttribute("data-emit-metadata", "0");
     script.setAttribute("data-input-position", "bottom");
     script.setAttribute("data-theme", "light");
+    script.setAttribute("data-loading", "lazy");
     script.setAttribute("crossorigin", "anonymous");
 
     containerRef.current.innerHTML = "";
