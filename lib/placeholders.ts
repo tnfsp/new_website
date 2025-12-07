@@ -12,10 +12,10 @@ export const defaultSiteCopy = {
   heroSubtitle: "Cardiac surgeon · writer · slow thinker",
   heroIntro:
     "Medicine is technique and also story. This site gathers notes from the operating room and the writing desk.",
-  heroCTA: "Read the latest →",
-  footerText: "wilsonchao.com — handwritten in small batches.",
+  heroCTA: "Read the latest ->",
+  footerText: "wilsonchao.com - handwritten in small batches.",
   murmurIntro: "Daily fragments and half sentences live in murmur. It is a lighter, quicker feed.",
-  murmurCTA: "Visit murmur →",
+  murmurCTA: "Visit murmur ->",
   aboutName: "Yi-Hsiang Chao, MD",
   aboutIntro:
     "I split time between the operating room, writing desk, and long walks with a notebook.",
@@ -25,7 +25,7 @@ export const defaultSiteCopy = {
   blogTitle: "Articles & notes",
   blogIntro: "Long-form writing on medicine, stories from the ward, and how to keep a craft humane.",
   projectsTitle: "Daily notes",
-  projectsIntro: "Short daily entries — fragments, drafts, and small observations.",
+  projectsIntro: "Short daily entries - fragments, drafts, and small observations.",
   linksTitle: "Hello there",
   linksIntro: "Quick paths to the places I write and share updates.",
 };
@@ -76,7 +76,7 @@ export const featuredProjects: {
   },
   {
     title: "Night shift letters",
-    description: "Fragments written between cases — published as a small zine.",
+    description: "Fragments written between cases - published as a small zine.",
     href: "/blog/night-shift-letters",
   },
   {
@@ -90,10 +90,10 @@ export const aboutPreview =
   "I split time between the operating room, writing desk, and long walks with a notebook. This site holds the stories, questions, and unfinished threads.";
 
 export const linkItems = [
-  { label: "About｜認識我", href: "/about" },
-  { label: "Website｜個人網站", href: "/" },
-  { label: "murmur｜碎片日記", href: "https://murmur.wilsonchao.com", external: true },
-  { label: "Instagram｜追蹤生活更新", href: "https://www.instagram.com/momobear_doctor", external: true },
-  { label: "Telegram｜即時通知", href: "https://t.me/doctormomo", external: true },
-  { label: "RSS｜訂閱文章", href: "/feed.xml" },
+  { label: "👤 About｜認識我", href: "/about" },
+  { label: "🏠 Website｜個人網站", href: "/" },
+  { label: "📓 murmur｜碎片日記", href: "https://murmur.wilsonchao.com", external: true },
+  { label: "📸 Instagram｜追蹤生活更新", href: "https://www.instagram.com/momobear_doctor", external: true },
+  { label: "📨 Telegram｜即時通知", href: "https://t.me/doctormomo", external: true },
+  { label: "📰 RSS｜訂閱文章", href: "/feed.xml" },
 ];
