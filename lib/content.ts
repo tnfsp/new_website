@@ -106,13 +106,14 @@ function firstImageFromEntry(entry: BlogEntry) {
   return md?.[1];
 }
 
-function inferReadingTime(entry: BlogEntry) {
-  if (entry.readingTime) return entry.readingTime;
+function inferReadingTime(entry: BlogEntry): string | undefined {
   const plain = stripMarkup(entry.contentHtml || entry.content);
-  if (!plain) return undefined;
-  const words = plain.split(/\s+/).filter(Boolean).length;
-  const minutes = Math.max(1, Math.ceil(words / 180));
-  return `${minutes} min`;
+  if (plain) {
+    const words = plain.split(/\s+/).filter(Boolean).length;
+    const minutes = Math.max(1, Math.ceil(words / 180));
+    return `${minutes} min`;
+  }
+  return entry.readingTime;
 }
 
 function sortByDateDesc(entries: BlogEntry[]) {
