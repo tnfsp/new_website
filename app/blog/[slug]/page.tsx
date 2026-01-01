@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getBlogEntry, loadBlogEntries } from "@/lib/content";
 import { ViewCounter } from "@/components/ui/ViewCounter";
 import { LikeButton } from "@/components/ui/LikeButton";
+import { CodeHighlight } from "@/components/ui/CodeHighlight";
 
 export const dynamic = "force-dynamic";
 
@@ -82,10 +83,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         ) : null}
         <div className="space-y-3 text-[var(--foreground)] leading-relaxed">
           {bodyHtml ? (
-            <div
-              className="[&_p]:my-3 [&_p]:leading-relaxed [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:text-[var(--foreground)] [&_h1]:inline-block [&_h1]:bg-[var(--highlight)] [&_h1]:px-2 [&_h1]:py-0.5 [&_h1]:rounded [&_h2]:text-xl [&_h2]:inline-block [&_h2]:bg-[var(--highlight)] [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:rounded [&_h3]:text-lg [&_h3]:inline-block [&_h3]:bg-[var(--highlight)] [&_h3]:px-2 [&_h3]:py-0.5 [&_h3]:rounded [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--border)] [&_blockquote]:pl-3 [&_blockquote]:italic"
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
-            />
+            <>
+              <CodeHighlight />
+              <div
+                className="[&_p]:my-3 [&_p]:leading-relaxed [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:text-[var(--foreground)] [&_h1]:inline-block [&_h1]:bg-[var(--highlight)] [&_h1]:px-2 [&_h1]:py-0.5 [&_h1]:rounded [&_h2]:text-xl [&_h2]:inline-block [&_h2]:bg-[var(--highlight)] [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:rounded [&_h3]:text-lg [&_h3]:inline-block [&_h3]:bg-[var(--highlight)] [&_h3]:px-2 [&_h3]:py-0.5 [&_h3]:rounded [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--border)] [&_blockquote]:pl-3 [&_blockquote]:italic [&_pre]:my-4 [&_pre]:p-4 [&_pre]:bg-[#1e1e1e] [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-[var(--border)] [&_pre_code]:text-sm [&_pre_code]:font-mono [&_pre_code]:leading-relaxed [&_code]:font-mono [&_code]:text-sm [&_code]:bg-[var(--highlight)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre_code]:bg-transparent [&_pre_code]:p-0"
+                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              />
+            </>
           ) : (
             <p>No content available yet. Check back soon.</p>
           )}
