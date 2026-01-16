@@ -57,10 +57,9 @@ export function SearchBox() {
 
     const loadPagefind = async () => {
       try {
-        // Dynamic import for ES Module
-        const pagefind = await import(
-          /* webpackIgnore: true */ "/pagefind/pagefind.js"
-        ) as PagefindAPI;
+        // Dynamic import for ES Module (file exists at runtime in public/)
+        // @ts-expect-error - Pagefind is generated at build time
+        const pagefind: PagefindAPI = await import("/pagefind/pagefind.js");
         await pagefind.init();
         pagefindRef.current = pagefind;
       } catch (err) {
