@@ -55,7 +55,7 @@ export default async function DailyEntryPage({ params }: { params: Promise<{ slu
         ) : null}
         {bodyHtml ? (
           <div
-            className="prose prose-neutral max-w-none text-[var(--foreground)] prose-a:text-[var(--accent)] [&_h1]:inline-block [&_h1]:bg-[var(--highlight)] [&_h1]:px-2 [&_h1]:py-0.5 [&_h1]:rounded [&_h2]:inline-block [&_h2]:bg-[var(--highlight)] [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:rounded [&_h3]:inline-block [&_h3]:bg-[var(--highlight)] [&_h3]:px-2 [&_h3]:py-0.5 [&_h3]:rounded"
+            className="prose prose-neutral max-w-none text-[var(--foreground)] prose-a:text-[var(--accent)] [&_h1]:block [&_h1]:w-fit [&_h1]:bg-[var(--highlight)] [&_h1]:px-2 [&_h1]:py-0.5 [&_h1]:rounded [&_h2]:block [&_h2]:w-fit [&_h2]:bg-[var(--highlight)] [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:rounded [&_h3]:block [&_h3]:w-fit [&_h3]:bg-[var(--highlight)] [&_h3]:px-2 [&_h3]:py-0.5 [&_h3]:rounded"
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
         ) : entry.content ? (

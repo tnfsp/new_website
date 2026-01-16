@@ -479,17 +479,25 @@ async function renderBlocksWithAssets(
   mergedHtml = mergedHtml.replace(/<\/ol>\n<ol>/g, "\n");
   mergedHtml = mergedHtml.replace(/<\/ul>\n<ul>/g, "\n");
 
-  // Convert [URL] patterns to clickable links (with or without https://)
+  // Convert **text** [url] pattern to clickable bold link (must be first!)
+  mergedHtml = mergedHtml.replace(
+    /\*\*([^*]+)\*\*\s*\[([^\]]+)\]/g,
+    (_, text, url) => {
+      const href = url.startsWith('http') ? url : `https://${url}`;
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer"><strong>${text}</strong></a>`;
+    }
+  );
+  // Convert remaining [URL] patterns to clickable links
   mergedHtml = mergedHtml.replace(
     /\[(https?:\/\/[^\]]+)\]/g,
     (_, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${new URL(url).hostname}</a>`
   );
-  // Handle [domain.com] format (without protocol)
+  // Handle remaining [domain.com] format (without protocol)
   mergedHtml = mergedHtml.replace(
     /\[([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\]]*)?)\]/g,
     (_, domain) => `<a href="https://${domain}" target="_blank" rel="noopener noreferrer">${domain.split('/')[0]}</a>`
   );
-  // Convert **text** to <strong>
+  // Convert remaining **text** to <strong>
   mergedHtml = mergedHtml.replace(
     /\*\*([^*]+)\*\*/g,
     (_, text) => `<strong>${text}</strong>`
