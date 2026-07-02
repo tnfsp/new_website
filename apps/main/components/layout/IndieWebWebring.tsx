@@ -17,7 +17,7 @@ export function IndieWebWebring() {
               看看更多其他獨立作者經營的網站，沿著 Webring 逛逛鄰居。
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--foreground)]">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--foreground)] sm:shrink-0">
             <a
               href="https://xn--sr8hvo.ws/previous"
               className="rounded-full border border-[var(--border)] px-3 py-1 transition-colors hover:border-[var(--accent-strong)] hover:text-[var(--accent)]"
