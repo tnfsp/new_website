@@ -248,3 +248,26 @@ RESEND_API_KEY
 ### 待辦
 - [ ] 線上實機確認 blog 閱讀節奏 + 首頁新順序
 - [ ] (可選) blog 列表頁 + 上下篇導覽視覺對齊 owl 工藝水準
+
+## Session: 2026-07-02 14:06
+**Session ID**: wilsonchao-review-20260702
+**Project**: wilsonchao.com (apps/main)
+
+### 完成
+- 全站 code review：4 並行 agent 分區審查（API+lib / pages+routes / React components / sync scripts）+ 主 loop tsc/eslint/build 基線 → 4 Critical、9 High、~25 Medium/Low
+- 修 4 Critical：comments GET 洩漏 email、sync:notion 誤刪 vault 文章、Notion query 無分頁靜默刪文、sync-vault find shell injection
+- 修 9 High：時區統一 Asia/Taipei（lib/date.ts）、KV 清單改 Redis list 原子寫入（lib/kv-list.ts）、/api/stats 加 Bearer token、likes/views 驗證+rate limit、sanitizeHtml 換 sanitize-html、build-search-index 失敗擋 build
+- 修 ~25 Medium/Low：/feed.xml 真聚合、/owl 無 JS fallback、a11y（focus trap/inert/aria-live/鍵盤）、hydration mismatch、scripts 韌性（原子寫入/lock heartbeat/newsletter --send-existing）、JSON-LD escape
+- STATS_SECRET 透過 Vercel CLI 設 prod+preview（值在 apps/main/.env.local）
+- merge 回 main + push + Vercel 部署 Ready + production 端點實測全過
+
+### 決策
+- 修法收斂成共用 helper（date/kv-list/json-ld/sanitize），而非逐點打補丁 → 未來一致
+- sync:notion 改 legacy 定位：cleanup 改 --prune opt-in + 刪 >10 需 --force（vault 才是 source of truth）
+- API 錯誤語意分離：壞輸入 400、KV 故障 503（不再假裝回 0 讓前端歸零）
+- /api/stats fail-closed：沒設 STATS_SECRET 一律 401
+- 2 個 <img> lint warning 刻意保留（非 LCP 關鍵路徑）
+
+### 待辦
+- [ ] （可選）審查清單本來未列的更大重構：CodeHighlight 移到 build time、表單抽共用 hook、loadBlogEntries 包 React cache()
+- [ ] （提醒）電子報之後用 --send-existing <id> 寄，勿重跑 --send 產生第二份 broadcast
