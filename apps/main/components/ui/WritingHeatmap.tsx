@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 type BlogEntry = { date: string; slug: string; title: string };
 
@@ -34,8 +35,8 @@ export function WritingHeatmap({ weeks = 52 }: { weeks?: number }) {
     date: string;
     flipDown: boolean;
   } | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/writing-calendar.json")
@@ -97,7 +98,7 @@ export function WritingHeatmap({ weeks = 52 }: { weeks?: number }) {
 
   function handleClick(cellEntries: BlogEntry[]) {
     if (cellEntries.length >= 1) {
-      window.location.assign(`/blog/${cellEntries[0].slug}`);
+      router.push(`/blog/${cellEntries[0].slug}`);
     }
   }
 
@@ -136,7 +137,6 @@ export function WritingHeatmap({ weeks = 52 }: { weeks?: number }) {
       </div>
       <div className="overflow-x-auto">
         <svg
-          ref={svgRef}
           width={svgWidth}
           height={svgHeight}
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -173,29 +173,43 @@ export function WritingHeatmap({ weeks = 52 }: { weeks?: number }) {
             ) : null
           )}
 
-          {/* Cells */}
-          {grid.map((cell) => (
-            <rect
-              key={cell.date}
-              x={LABEL_W + cell.col * SIZE}
-              y={LABEL_H + cell.row * SIZE}
-              width={CELL}
-              height={CELL}
-              rx={2}
-              fill={cell.entries.length > 0 ? COLORS.filled : COLORS.empty}
-              style={{ cursor: cell.entries.length > 0 ? "pointer" : "default" }}
-              onClick={() => handleClick(cell.entries)}
-              onMouseEnter={(e) => handleMouseEnter(e, cell.entries, cell.date)}
-              onMouseLeave={() => setTooltip(null)}
-            >
-              <title>
-                {cell.date}
-                {cell.entries.length > 0
-                  ? ` — ${cell.entries.map((e) => e.title).join(", ")}`
-                  : ""}
-              </title>
-            </rect>
-          ))}
+          {/* Cells：有文章的格子要能用鍵盤操作（Tab 聚焦、Enter/Space 導頁） */}
+          {grid.map((cell) => {
+            const hasEntries = cell.entries.length > 0;
+            const cellLabel = hasEntries
+              ? `${cell.date} — ${cell.entries.map((e) => e.title).join(", ")}`
+              : cell.date;
+            return (
+              <rect
+                key={cell.date}
+                x={LABEL_W + cell.col * SIZE}
+                y={LABEL_H + cell.row * SIZE}
+                width={CELL}
+                height={CELL}
+                rx={2}
+                fill={hasEntries ? COLORS.filled : COLORS.empty}
+                style={{ cursor: hasEntries ? "pointer" : "default" }}
+                tabIndex={hasEntries ? 0 : undefined}
+                role={hasEntries ? "link" : undefined}
+                aria-label={hasEntries ? cellLabel : undefined}
+                onClick={() => handleClick(cell.entries)}
+                onKeyDown={
+                  hasEntries
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleClick(cell.entries);
+                        }
+                      }
+                    : undefined
+                }
+                onMouseEnter={(e) => handleMouseEnter(e, cell.entries, cell.date)}
+                onMouseLeave={() => setTooltip(null)}
+              >
+                <title>{cellLabel}</title>
+              </rect>
+            );
+          })}
         </svg>
       </div>
 

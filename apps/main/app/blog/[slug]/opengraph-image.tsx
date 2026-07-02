@@ -19,8 +19,7 @@ export const contentType = "image/png";
  * `text=` API (only the glyphs this post needs). If that fetch fails we fall
  * back to the bundled 700 subset so the render never crashes.
  */
-async function loadFont(text: string, weight: 700 | 500): Promise<ArrayBuffer | Buffer> {
-  const chars = Array.from(new Set(text.split(""))).join("");
+async function fetchFont(chars: string, weight: 700 | 500): Promise<ArrayBuffer | Buffer> {
   try {
     const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@${weight}&text=${encodeURIComponent(
       chars
@@ -33,12 +32,32 @@ async function loadFont(text: string, weight: 700 | 500): Promise<ArrayBuffer | 
     ).text();
     const fontUrl = css.match(/src:\s*url\((https:\/\/[^)]+)\)/)?.[1];
     if (!fontUrl) throw new Error("no font url in css");
+    // Satori 不支援 woff2 — 如果 Google 哪天改回應 woff2，走 fallback 而非 500
+    if (/\.woff2(\?|$)/i.test(fontUrl)) throw new Error("google served woff2");
     return await (await fetch(fontUrl)).arrayBuffer();
   } catch {
     // Bundled subset only covers brand chars — degraded but never fatal.
     const file = weight === 700 ? "noto-sans-tc-700-subset.ttf" : "noto-sans-tc-500-subset.ttf";
     return readFile(join(process.cwd(), "assets", file));
   }
+}
+
+// 模組層級快取：同一組字元＋字重只 fetch Google Fonts 一次，
+// 不然每次有人分享連結、爬蟲打這個 route 都會打兩次外部請求。
+// 快取的是 promise，並發請求也只會觸發一次 fetch。
+const fontCache = new Map<string, Promise<ArrayBuffer | Buffer>>();
+const FONT_CACHE_MAX = 128;
+
+function loadFont(text: string, weight: 700 | 500): Promise<ArrayBuffer | Buffer> {
+  const chars = Array.from(new Set(text.split(""))).sort().join("");
+  const key = `${weight}:${chars}`;
+  const cached = fontCache.get(key);
+  if (cached) return cached;
+  // 粗略的上限：長壽 process 不會無限成長
+  if (fontCache.size >= FONT_CACHE_MAX) fontCache.clear();
+  const promise = fetchFont(chars, weight);
+  fontCache.set(key, promise);
+  return promise;
 }
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {

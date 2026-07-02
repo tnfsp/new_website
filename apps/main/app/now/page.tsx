@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadNowData, isStale } from "@/lib/now";
+import { jsonLdString } from "@/lib/json-ld";
 import { NowDynamicGrid } from "@/components/now/NowDynamicGrid";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://wilsonchao.com";
@@ -52,12 +53,11 @@ function renderLinkedText(text: string) {
 }
 
 function formatLastUpdated(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
-  } catch {
-    return "";
-  }
+  // new Date(壞字串) 不會 throw，只會回 Invalid Date——
+  // 不 guard 的話頁面會直接顯示 "Invalid Date"
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
 }
 
 export default async function NowPage() {
@@ -84,9 +84,7 @@ export default async function NowPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbJsonLd).replace(/<\/script/gi, "<\\/script"),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
       />
       <main className="page-shell space-y-6">
         {/* Header */}

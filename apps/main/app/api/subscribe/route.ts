@@ -182,7 +182,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      // 壞 JSON 是 client 的錯（400），不是 server 故障（500）
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { email } = body;
     // source 由 client 控制，可能非字串；收斂成字串，
     // 否則 escapeHtml(source) 對非字串會 throw（通知靜默失敗、髒值還進 KV meta）

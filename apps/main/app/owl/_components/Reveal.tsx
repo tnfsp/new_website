@@ -14,8 +14,9 @@
  *   transition or transform (achieved via the CSS .owl-reveal-visible class
  *   being applied synchronously on mount instead of after observation).
  * - Content is server-rendered; the client component only attaches the
- *   observer. SSR output is the element with class owl-reveal (hidden by CSS)
- *   until hydration fires the observer.
+ *   observer. SSR output is the element with class owl-reveal — hidden by CSS
+ *   only when the .owl-js class is present on .owl-page (added pre-paint by an
+ *   inline script in app/owl/layout.tsx), so content stays visible without JS.
  */
 
 import React, { useEffect, useRef, ElementType, ComponentPropsWithoutRef } from "react";

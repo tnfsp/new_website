@@ -58,7 +58,8 @@ export async function GET(request: Request) {
     return NextResponse.json(counts, { status: 200 });
   } catch (error) {
     console.error("[api/likes] Failed to read likes:", (error as Error).message);
-    return NextResponse.json({ total: 0 }, { status: 200 });
+    // 503 而不是假裝 total: 0——KV 短暫故障不該讓前端把真實數字歸零
+    return NextResponse.json({ error: "Like store unavailable" }, { status: 503 });
   }
 }
 
@@ -85,6 +86,6 @@ export async function POST(request: Request) {
     return NextResponse.json(counts, { status: 200 });
   } catch (error) {
     console.error("[api/likes] Failed to record like:", (error as Error).message);
-    return NextResponse.json({ total: 0 }, { status: 200 });
+    return NextResponse.json({ error: "Like store unavailable" }, { status: 503 });
   }
 }

@@ -130,11 +130,16 @@ export function StreamList({ entries }: { entries: Entry[] }) {
             if (dateKey) lastDateKey = dateKey;
 
             return (
-              <div key={item.link || `stream-${index}`}>
+              /* link 可能重複（同一連結貼兩次），加上 index 保證 key 唯一 */
+              <div key={`${item.link || "stream"}-${index}`}>
                 {showDivider ? (
                   <div className={`flex items-center gap-3 ${index > 0 ? "pt-3" : ""}`}>
                     <div className="h-px flex-1 bg-[var(--border)]" />
-                    <span className="text-xs font-medium tracking-wide text-[var(--muted)] whitespace-nowrap">
+                    {/* Today/Yesterday 依 client 的「現在」計算，ISR 頁面 server/client 可能不同 */}
+                    <span
+                      suppressHydrationWarning
+                      className="text-xs font-medium tracking-wide text-[var(--muted)] whitespace-nowrap"
+                    >
                       {formatDateDivider(dateKey)}
                     </span>
                     <div className="h-px flex-1 bg-[var(--border)]" />

@@ -48,6 +48,24 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // 輸入問題（壞 JSON、缺欄位）回 400，跟 KV 故障的 503 分開——
+  // 不然真的 bug 會偽裝成「KV 掛了」，前端誤走降級路徑
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const qid = String(body?.questionId ?? "");
+  const side = String(body?.side ?? "");
+
+  if (!QID_RE.test(qid)) {
+    return NextResponse.json({ error: "Invalid questionId" }, { status: 400 });
+  }
+  if (side !== "A" && side !== "B") {
+    return NextResponse.json({ error: "Invalid side" }, { status: 400 });
+  }
+
   try {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -59,24 +77,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "太快了，稍等一下。" }, { status: 429 });
     }
 
-    const body = await request.json();
-    const qid = String(body?.questionId ?? "");
-    const side = String(body?.side ?? "");
-
-    if (!QID_RE.test(qid)) {
-      return NextResponse.json({ error: "Invalid questionId" }, { status: 400 });
-    }
-    if (side !== "A" && side !== "B") {
-      return NextResponse.json({ error: "Invalid side" }, { status: 400 });
-    }
-
     // 每 IP 每題只計一次（180 天）。已投過就只回現況。
     const first = await kv.set(votedKey(qid, ip), side, {
       nx: true,
       ex: 60 * 60 * 24 * 180,
     });
     if (first !== null) {
-      await kv.hincrby(votesKey(qid), side, 1);
+      try {
+        await kv.hincrby(votesKey(qid), side, 1);
+      } catch (err) {
+        // 補償：標記成功但計數失敗會讓這票永遠消失（IP 被記成已投、
+        // 票數卻沒加）——退掉標記，讓訪客之後能重投
+        await kv.del(votedKey(qid, ip)).catch(() => {});
+        throw err;
+      }
     }
 
     return NextResponse.json({ tally: await readTally(qid), counted: first !== null });

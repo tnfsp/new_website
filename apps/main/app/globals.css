@@ -1104,9 +1104,13 @@ body.simulator-fullscreen > header.page-shell {
 
    Stagger: cards carry a --index CSS custom property set via inline style
    from the Reveal component; delay is calc(var(--index, 0) * 80ms).
+
+   No-JS fallback: the hidden state is gated behind .owl-js, added by a tiny
+   inline script in app/owl/layout.tsx before first paint. Without JS the
+   class never appears, so content stays visible instead of opacity:0 forever.
    ─────────────────────────────────────────────────────────────────────────── */
 
-.owl-page .owl-reveal {
+.owl-page.owl-js .owl-reveal {
   opacity: 0;
   transform: translateY(12px);
   transition:
@@ -1117,7 +1121,7 @@ body.simulator-fullscreen > header.page-shell {
   will-change: opacity, transform;
 }
 
-.owl-page .owl-reveal.owl-reveal-visible {
+.owl-page.owl-js .owl-reveal.owl-reveal-visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -1127,7 +1131,7 @@ body.simulator-fullscreen > header.page-shell {
    reduced-motion guard at line 605-613 also collapses the transition to
    0.01ms — double-coverage for safety. */
 @media (prefers-reduced-motion: reduce) {
-  .owl-page .owl-reveal {
+  .owl-page.owl-js .owl-reveal {
     opacity: 1;
     transform: none;
     transition: none;

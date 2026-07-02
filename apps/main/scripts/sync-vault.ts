@@ -8,9 +8,10 @@ import { config as loadEnv } from "dotenv";
 import matter from "gray-matter";
 import { Marked } from "marked";
 import { existsSync } from "fs";
-import { readFile, readdir, writeFile, mkdir, stat, copyFile } from "fs/promises";
+import { readFile, readdir, mkdir, stat, copyFile } from "fs/promises";
 import path from "path";
 import { withSyncLock } from "./lib/sync-lock.js";
+import { writeFileAtomic } from "./lib/write-file-atomic.js";
 
 loadEnv({ path: ".env.local" });
 
@@ -592,10 +593,9 @@ async function writeBlogEntries(entries: BlogEntry[]) {
       );
     }
     seen.set(entry.slug, entry.title);
-    await writeFile(
+    await writeFileAtomic(
       path.join(BLOG_DIR, `${entry.slug}.json`),
-      JSON.stringify(entry, null, 2),
-      "utf-8"
+      JSON.stringify(entry, null, 2)
     );
   }
 }
@@ -605,12 +605,12 @@ async function writeProjectsCompat() {
   // 不要每次 sync 都覆蓋，萬一其他來源寫了內容會被清空
   if (existsSync(PROJECTS_PATH)) return;
   await mkdir(path.dirname(PROJECTS_PATH), { recursive: true });
-  await writeFile(PROJECTS_PATH, JSON.stringify([], null, 2), "utf-8");
+  await writeFileAtomic(PROJECTS_PATH, JSON.stringify([], null, 2));
 }
 
 async function writeSiteConfig(config: SiteConfig) {
   await mkdir(path.dirname(SITE_CONFIG_PATH), { recursive: true });
-  await writeFile(SITE_CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
+  await writeFileAtomic(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
 // ─── main ────────────────────────────────────────────────────────────

@@ -68,6 +68,7 @@ export async function POST(request: Request) {
     return NextResponse.json(counts, { status: 200 });
   } catch (error) {
     console.error("[api/views] Failed to record view:", (error as Error).message);
-    return NextResponse.json({ today: 0, total: 0 }, { status: 200 });
+    // 503 而不是假裝 0——KV 短暫故障不該讓前端顯示歸零的數字
+    return NextResponse.json({ error: "View store unavailable" }, { status: 503 });
   }
 }

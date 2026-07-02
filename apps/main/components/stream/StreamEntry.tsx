@@ -33,6 +33,8 @@ function extractLinkPreview(html: string): {
   if (!previewMatch) return null;
 
   const href = previewMatch[1];
+  // href 會直接進 <a href>，只允許 http(s)（擋 javascript: 之類的 scheme）
+  if (!/^https?:\/\//i.test(href)) return null;
   const inner = previewMatch[2];
 
   const titleMatch = inner.match(
@@ -79,10 +81,10 @@ function cleanHtml(html: string): string {
     ALLOWED_TAGS: ["a", "b", "i", "em", "strong", "br", "p", "span"],
     ALLOWED_ATTR: ["href", "class", "target", "rel"],
   });
-  // Make external links open in new tab
+  // Make external links open in new tab（不管屬性順序，沒有 target 的 <a> 都補上）
   cleaned = cleaned.replace(
-    /<a\s+href="/g,
-    '<a target="_blank" rel="noopener noreferrer" href="'
+    /<a\b(?![^>]*\btarget=)([^>]*)>/gi,
+    '<a target="_blank" rel="noopener noreferrer"$1>'
   );
   return cleaned.trim();
 }
@@ -131,10 +133,8 @@ function formatFullDate(dateStr: string): string {
   });
 }
 
-export function StreamEntry({ title, link, contentHtml, description, pubDate, tags }: Props) {
+export function StreamEntry({ title, contentHtml, description, pubDate, tags }: Props) {
   const isBlog = tags?.includes("blog");
-  const isVideo = tags?.includes("video");
-  const isMusic = tags?.includes("music");
 
   const youtubeId = useMemo(() => {
     if (!contentHtml) return null;
@@ -239,9 +239,10 @@ export function StreamEntry({ title, link, contentHtml, description, pubDate, ta
         </a>
       ) : null}
 
-      {/* Timestamp */}
+      {/* Timestamp：相對時間依 client 的「現在」計算，server/client 會差一點 */}
       {pubDate ? (
         <time
+          suppressHydrationWarning
           dateTime={pubDate}
           className="block text-xs tracking-[0.18em] text-[var(--muted)] text-right"
           title={formatFullDate(pubDate)}

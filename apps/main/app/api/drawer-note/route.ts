@@ -42,7 +42,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const { name, message, question, honeypot } = body ?? {};
 
     // Honeypot：被填了就當 spam，假裝成功但不存。

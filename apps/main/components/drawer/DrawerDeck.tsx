@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AnyDrawerCard, DrawerCard, DrawerQACard } from "@/lib/content";
 import { DrawerQuestion } from "./DrawerQuestion";
 import { DrawerQACardView } from "./DrawerQACardView";
@@ -21,6 +21,31 @@ function isPreferenceCard(card: AnyDrawerCard): card is DrawerCard {
 /** Narrows an AnyDrawerCard to a Q&A card. */
 function isQACard(card: AnyDrawerCard): card is DrawerQACard {
   return (card as DrawerQACard).type === "qa";
+}
+
+/** 已投過的題目記在 localStorage：「再想一次」翻回來重按、或重抽到同題，都不再重複送票。 */
+const VOTED_KEY = "drawer:voted";
+
+function hasVoted(questionId: string): boolean {
+  try {
+    const raw = localStorage.getItem(VOTED_KEY);
+    return raw ? (JSON.parse(raw) as string[]).includes(questionId) : false;
+  } catch {
+    return false;
+  }
+}
+
+function markVoted(questionId: string) {
+  try {
+    const raw = localStorage.getItem(VOTED_KEY);
+    const voted = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!voted.includes(questionId)) {
+      voted.push(questionId);
+      localStorage.setItem(VOTED_KEY, JSON.stringify(voted));
+    }
+  } catch {
+    /* localStorage 不可用就算了，頂多重複計一票 */
+  }
 }
 
 /** 把 choice + 選項，組成第一人稱的「我選…」開頭（不改 reason 的字）。 */
@@ -48,6 +73,16 @@ export function DrawerDeck({ cards }: { cards: AnyDrawerCard[] }) {
   const [turning, setTurning] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [qOpen, setQOpen] = useState(false); // 「丟一張紙條」表單開合
+  const drawTimerRef = useRef<number | null>(null);
+  const turnTimerRef = useRef<number | null>(null);
+
+  // 卸載時清掉動畫計時器，避免 setState 打在已卸載的元件上
+  useEffect(() => {
+    return () => {
+      if (drawTimerRef.current !== null) window.clearTimeout(drawTimerRef.current);
+      if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+    };
+  }, []);
 
   const drawRandom = useCallback(() => {
     setIndex((cur) => {
@@ -59,7 +94,8 @@ export function DrawerDeck({ cards }: { cards: AnyDrawerCard[] }) {
     setFace("front");
     setTurning(false);
     setDrawing(true);
-    window.setTimeout(() => setDrawing(false), 180);
+    if (drawTimerRef.current !== null) window.clearTimeout(drawTimerRef.current);
+    drawTimerRef.current = window.setTimeout(() => setDrawing(false), 180);
   }, [cards.length]);
 
   // 掛載後先抽一張藏在裡面，拉開即見。
@@ -76,16 +112,19 @@ export function DrawerDeck({ cards }: { cards: AnyDrawerCard[] }) {
   // 翻頁：轉到側面（看不見）→ 中途換內容 → 轉回正面。
   const turnTo = useCallback((target: "front" | "back") => {
     setTurning(true);
-    window.setTimeout(() => {
+    if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+    turnTimerRef.current = window.setTimeout(() => {
       setFace(target);
       setTurning(false);
     }, 200);
   }, []);
 
-  // 按下一邊 → 翻頁看我。票仍記到後端，前端不顯示比例。
+  // 按下一邊 → 翻頁看我。票仍記到後端，前端不顯示比例；同一題只計一票。
   const pick = useCallback(
     (side: "A" | "B", questionId: string) => {
       turnTo("back");
+      if (hasVoted(questionId)) return; // 照樣翻到背面，只是不再送票
+      markVoted(questionId);
       fetch("/api/drawer-vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,9 +159,11 @@ export function DrawerDeck({ cards }: { cards: AnyDrawerCard[] }) {
         ) : null}
       </div>
 
-      {/* 闔上的臉：引言 + 把手（拉開時收合） */}
+      {/* 闔上的臉：引言 + 把手（拉開時收合）
+          inert：收合的面板裡的按鈕不能留在 Tab 順序裡，鍵盤使用者會「隱形觸發」 */}
       <div
         aria-hidden={open}
+        inert={open}
         className={
           "grid transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none " +
           (open ? "grid-rows-[0fr] opacity-0 pointer-events-none" : "grid-rows-[1fr] opacity-100")
@@ -155,6 +196,7 @@ export function DrawerDeck({ cards }: { cards: AnyDrawerCard[] }) {
       {/* 拉開的內容：紙條（翻頁）+ 把手（同一張卡往下長） */}
       <div
         aria-hidden={!open}
+        inert={!open}
         className={
           "grid transition-[grid-template-rows,opacity] duration-500 ease-out motion-reduce:transition-none " +
           (open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none")

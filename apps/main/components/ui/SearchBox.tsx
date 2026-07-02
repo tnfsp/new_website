@@ -23,18 +23,58 @@ type SearchResult = {
   excerpt: string;
 };
 
+// Pagefind 只載一次（module-level memoized promise）：
+// 失敗（dev 沒跑 pagefind）也共用同一個 promise，不然每次打字都會重新輪詢。
+let pagefindPromise: Promise<PagefindAPI | null> | null = null;
+
+function loadPagefind(): Promise<PagefindAPI | null> {
+  if (!pagefindPromise) {
+    pagefindPromise = (async () => {
+      try {
+        // Use absolute URL for dynamic import (Turbopack doesn't support server-relative paths)
+        const pagefindUrl = `${window.location.origin}/pagefind/pagefind.js`;
+        const pagefind: PagefindAPI = await import(/* webpackIgnore: true */ pagefindUrl);
+        await pagefind.init();
+        return pagefind;
+      } catch (err) {
+        console.warn("Pagefind not available:", err);
+        return null;
+      }
+    })();
+  }
+  return pagefindPromise;
+}
+
 export function SearchBox() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const pagefindRef = useRef<PagefindAPI | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  // 遞增的 request id：舊查詢比新查詢慢回來時，直接丟棄，避免覆蓋新結果
+  const requestIdRef = useRef(0);
+  const wasOpenRef = useRef(false);
 
+  // 開啟時 focus 輸入框；關閉時把 focus 還給觸發鈕（trigger 保持掛載才還得回去）
   useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus();
+    if (open) {
+      inputRef.current?.focus();
+    } else if (wasOpenRef.current) {
+      triggerRef.current?.focus();
     }
+    wasOpenRef.current = open;
+  }, [open]);
+
+  // 開啟時鎖住 body 捲動
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -53,20 +93,7 @@ export function SearchBox() {
 
   useEffect(() => {
     if (!open) return;
-    if (pagefindRef.current) return;
-
-    const loadPagefind = async () => {
-      try {
-        // Use absolute URL for dynamic import (Turbopack doesn't support server-relative paths)
-        const pagefindUrl = `${window.location.origin}/pagefind/pagefind.js`;
-        const pagefind: PagefindAPI = await import(/* webpackIgnore: true */ pagefindUrl);
-        await pagefind.init();
-        pagefindRef.current = pagefind;
-      } catch (err) {
-        console.warn("Pagefind not available:", err);
-      }
-    };
-    loadPagefind();
+    void loadPagefind();
   }, [open]);
 
   useEffect(() => {
@@ -75,23 +102,22 @@ export function SearchBox() {
       return;
     }
 
-    const search = async () => {
-      // Wait for pagefind to be ready
-      let attempts = 0;
-      while (!pagefindRef.current && attempts < 20) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
+    const requestId = ++requestIdRef.current;
+    const isStale = () => requestIdRef.current !== requestId;
 
-      if (!pagefindRef.current) {
-        console.warn("Pagefind not loaded after waiting");
+    const search = async () => {
+      const pagefind = await loadPagefind();
+      if (isStale()) return;
+
+      if (!pagefind) {
+        console.warn("Pagefind not loaded");
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        const response = await pagefindRef.current.search(query);
+        const response = await pagefind.search(query);
         const items = await Promise.all(
           response.results.slice(0, 8).map(async (result) => {
             const data = await result.data();
@@ -103,12 +129,14 @@ export function SearchBox() {
             };
           })
         );
+        if (isStale()) return;
         setResults(items);
       } catch (err) {
+        if (isStale()) return;
         console.error("Search error:", err);
         setResults([]);
       } finally {
-        setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     };
 
@@ -116,9 +144,28 @@ export function SearchBox() {
     return () => clearTimeout(debounce);
   }, [query]);
 
-  if (!open) {
-    return (
+  // 最小 focus trap：Tab 在 modal 內循環
+  const handleTrapKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  return (
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--highlight)]/60 hover:text-[var(--accent)]"
@@ -140,16 +187,23 @@ export function SearchBox() {
           <path d="m21 21-4.3-4.3" />
         </svg>
       </button>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
+      {open ? (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search"
+      onKeyDown={handleTrapKeyDown}
+    >
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => setOpen(false)}
       />
-      <div className="relative w-full max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl">
+      <div
+        ref={modalRef}
+        className="relative w-full max-w-xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl"
+      >
         <input
           ref={inputRef}
           type="text"
@@ -188,5 +242,7 @@ export function SearchBox() {
         </div>
       </div>
     </div>
+      ) : null}
+    </>
   );
 }

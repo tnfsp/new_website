@@ -33,7 +33,23 @@ export default function OwlLayout({ children }: { children: React.ReactNode }) {
   return (
     // The two font CSS variables are attached here; .owl-page applies the paper
     // background + ink text color that define the /owl visual identity.
-    <div className={`owl-page ${notoSerifTC.variable} ${newsreader.variable}`}>
+    // suppressHydrationWarning：下面的 inline script 會在 hydration 前
+    // 加上 owl-js class（跟 theme script 同一招），className 必然跟
+    // server HTML 不同，這是刻意的。
+    <div
+      className={`owl-page ${notoSerifTC.variable} ${newsreader.variable}`}
+      suppressHydrationWarning
+    >
+      {/* 在 paint 前同步加上 owl-js class：.owl-reveal 的隱藏樣式只在
+          .owl-page.owl-js 底下生效（見 globals.css）。沒有 JS（或 script
+          被擋、hydration 前）時 class 不存在，內容直接可見——避免整頁
+          因為 IntersectionObserver 沒跑而永遠 opacity:0。 */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "document.currentScript.parentElement.classList.add('owl-js')",
+        }}
+      />
       {children}
     </div>
   );

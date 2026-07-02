@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
   slug: string;
@@ -11,6 +11,8 @@ export function LikeButton({ slug, label = "Like" }: Props) {
   const [count, setCount] = useState<number | null>(null);
   const [liked, setLiked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // POST 完成後，比較慢回來的初始 GET 不能再覆蓋（GET 的 total 已經是舊的）
+  const postCompleted = useRef(false);
   const storageKey = useMemo(() => `liked:${slug}`, [slug]);
 
   useEffect(() => {
@@ -25,14 +27,15 @@ export function LikeButton({ slug, label = "Like" }: Props) {
           method: "GET",
           signal: controller.signal,
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // KV 失敗時 API 回 503：保持目前畫面，不要顯示 0
+        if (!res.ok) return;
         const json = (await res.json()) as { total?: number };
-        if (!cancelled) {
-          setCount(typeof json.total === "number" ? json.total : 0);
+        if (!cancelled && !postCompleted.current && typeof json.total === "number") {
+          setCount(json.total);
         }
       } catch (error) {
+        if ((error as Error).name === "AbortError") return;
         console.warn("[like-button] failed to load likes:", (error as Error).message);
-        if (!cancelled) setCount(0);
       }
     };
     void fetchCounts();
@@ -50,6 +53,7 @@ export function LikeButton({ slug, label = "Like" }: Props) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as { total?: number };
       const nextCount = typeof json.total === "number" ? json.total : (count ?? 0) + 1;
+      postCompleted.current = true;
       setCount(nextCount);
       setLiked(true);
       if (typeof window !== "undefined") localStorage.setItem(storageKey, "1");

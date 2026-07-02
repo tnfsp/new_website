@@ -5,6 +5,7 @@ import { loadBlogEntries } from "@/lib/content";
 import { SubscribeForm } from "@/components/ui/SubscribeForm";
 import { WritingHeatmap } from "@/components/ui/WritingHeatmap";
 import { BASE_URL } from "@/lib/constants";
+import { jsonLdString } from "@/lib/json-ld";
 
 export const metadata: Metadata = {
   alternates: { canonical: BASE_URL },
@@ -93,7 +94,7 @@ export default async function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd) }}
       />
       <main className="page-shell space-y-16">
 

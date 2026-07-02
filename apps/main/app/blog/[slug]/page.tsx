@@ -11,6 +11,7 @@ import { SubscribeForm } from "@/components/ui/SubscribeForm";
 import { AuthorSignature } from "@/components/ui/AuthorSignature";
 import { CommentSection } from "@/components/ui/CommentSection";
 import { BASE_URL } from "@/lib/constants";
+import { jsonLdString } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,11 @@ export async function generateMetadata({
       type: "article",
       publishedTime: entry.publishedAt,
       authors: ["趙玴祥"],
-      images: [{ url: image, width: 1200, height: 630, alt: entry.title }],
+      // entry.image 是任意（多半直式）封面照，寫死 1200x630 會讓爬蟲裁錯圖；
+      // 只有自產的 opengraph-image 才標尺寸
+      images: entry.image
+        ? [{ url: image, alt: entry.title }]
+        : [{ url: image, width: 1200, height: 630, alt: entry.title }],
     },
     twitter: {
       card: "summary_large_image",
@@ -125,7 +130,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
       />
     <main className="page-shell space-y-8">
       <Link

@@ -11,11 +11,10 @@ interface Props {
 }
 
 function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("zh-TW", { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
+  // new Date() 不會 throw，壞字串只會變 Invalid Date——要用 getTime() 檢查
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("zh-TW", { month: "short", day: "numeric" });
 }
 
 function MediaSection({

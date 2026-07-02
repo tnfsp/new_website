@@ -39,7 +39,6 @@ const feeds = [
 ];
 
 function subscribeLinks(feedUrl: string) {
-  const encoded = encodeURIComponent(feedUrl);
   return [
     { label: "RSS", href: feedUrl },
   ];

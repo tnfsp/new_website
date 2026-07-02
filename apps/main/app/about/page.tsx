@@ -4,6 +4,7 @@ import { DrawerDeck } from "@/components/drawer/DrawerDeck";
 import { DrawerNote } from "@/components/drawer/DrawerNote";
 import { loadDrawerCards } from "@/lib/content";
 import { BASE_URL } from "@/lib/constants";
+import { jsonLdString } from "@/lib/json-ld";
 
 export const metadata = {
   title: "About — Wilson Chao",
@@ -77,7 +78,7 @@ export default async function AboutPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(personJsonLd) }}
       />
       <main className="page-shell space-y-8">
         {/* Page header */}

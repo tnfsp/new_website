@@ -14,6 +14,9 @@
  *   and exits (another sync is running).
  * - If the lock is older than 10 minutes it is considered stale (e.g. a
  *   previous sync crashed without cleanup) and is taken over.
+ * - While the sync runs, the lock timestamp is refreshed every 60 seconds
+ *   (heartbeat), so a legitimately long-running sync (> 10 minutes) does not
+ *   get its lock stolen as "stale" by the next run.
  * - The lock is always released in a `finally` block, even when the sync fails.
  */
 
@@ -23,6 +26,7 @@ import path from "path";
 // Sync scripts run with cwd = apps/main, so this resolves to apps/main/.sync-lock
 const LOCK_PATH = path.join(process.cwd(), ".sync-lock");
 const STALE_AFTER_MS = 10 * 60 * 1000; // 10 minutes
+const HEARTBEAT_INTERVAL_MS = 60 * 1000; // refresh the lock timestamp every minute
 
 type LockInfo = {
   pid: number;
@@ -113,9 +117,29 @@ export async function withSyncLock<T>(
   fn: () => Promise<T>
 ): Promise<T> {
   acquireSyncLock(owner);
+  // Heartbeat：sync 跑超過 STALE_AFTER_MS（10 分鐘）的話，
+  // 下一次執行會把還活著的鎖當成 stale 搶走。
+  // 所以持鎖期間每 60 秒刷新一次 timestamp，證明我們還在跑。
+  // .unref() 讓這個 timer 不會把 process 吊著不放。
+  const heartbeat = setInterval(() => {
+    try {
+      writeFileSync(
+        LOCK_PATH,
+        JSON.stringify(
+          { pid: process.pid, owner, timestamp: Date.now() },
+          null,
+          2
+        )
+      );
+    } catch {
+      // 刷新失敗不致命——最壞情況回到原本的 stale-takeover 行為。
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+  heartbeat.unref();
   try {
     return await fn();
   } finally {
+    clearInterval(heartbeat);
     releaseSyncLock();
   }
 }

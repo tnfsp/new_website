@@ -96,7 +96,7 @@ def stream_to_item(entry: dict, category: str | None = None) -> dict:
         note = None
 
     item: dict = {
-        "streamId": entry["id"],
+        "streamId": entry.get("id"),
         "title": title,
         "date": entry.get("pubDate", ""),
         "tag": (entry.get("tags") or [""])[0],
@@ -132,6 +132,12 @@ def run():
     seen_ids: dict[str, set] = {k: set() for k in categorized}
 
     for entry in stream:
+        # id 是去重和 archive 比對的 key，缺 id 的 entry 沒辦法處理——跳過並警告
+        entry_id = entry.get("id")
+        if not entry_id:
+            print(f"[now-sync] WARN: entry without id skipped: {entry.get('text', '')[:50]!r}")
+            continue
+
         pub_str = entry.get("pubDate", "")
         if not pub_str:
             continue
@@ -145,20 +151,20 @@ def run():
         # Map to categories
         for tag in tags:
             cat = TAG_MAP.get(tag)
-            if cat and entry["id"] not in seen_ids[cat]:
+            if cat and entry_id not in seen_ids[cat]:
                 cutoff = datetime.now(timezone.utc) - timedelta(days=EXPIRY_DAYS[cat])
                 if pub.astimezone(timezone.utc) >= cutoff:
                     item = stream_to_item(entry, category=cat)
                     categorized[cat].append(item)
-                    seen_ids[cat].add(entry["id"])
+                    seen_ids[cat].add(entry_id)
 
         # Fragments: only murmur entries
-        if "murmur" in tags and entry["id"] not in seen_ids["fragments"]:
+        if "murmur" in tags and entry_id not in seen_ids["fragments"]:
             cutoff = datetime.now(timezone.utc) - timedelta(days=EXPIRY_DAYS["fragments"])
             if pub.astimezone(timezone.utc) >= cutoff:
                 item = stream_to_item(entry, category="fragments")
                 categorized["fragments"].append(item)
-                seen_ids["fragments"].add(entry["id"])
+                seen_ids["fragments"].add(entry_id)
 
     # Apply limits (stream.json is already sorted newest-first)
     for cat, limit in LIMITS.items():

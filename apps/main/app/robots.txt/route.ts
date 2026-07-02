@@ -1,11 +1,13 @@
+import { BASE_URL } from "@/lib/constants";
+
 export function GET() {
   const body = [
     "User-agent: *",
     "Allow: /",
     "Disallow: /api/",
     "",
-    "Sitemap: https://wilsonchao.com/sitemap.xml",
-    "LLMs-Txt: https://wilsonchao.com/llms.txt",
+    `Sitemap: ${BASE_URL}/sitemap.xml`,
+    `LLMs-Txt: ${BASE_URL}/llms.txt`,
   ].join("\n");
 
   return new Response(body, {

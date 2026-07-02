@@ -58,27 +58,25 @@ export function SiteHeader() {
             />
           </Link>
 
-          <nav className="hidden items-center gap-5 text-sm text-[var(--muted)] md:flex">
-            {links.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-full px-3 py-2 md:px-2 md:py-1 transition-colors hover:bg-[var(--highlight)]/60 hover:text-[var(--accent)]"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <SearchBox />
-            <RssIcon />
-          </nav>
-
-          <div className="flex items-center gap-2 md:hidden">
+          {/* SearchBox 只掛載一次（跨斷點共用）：兩份實例會各掛一個 ⌘K 監聽、狀態互相打架 */}
+          <div className="flex items-center gap-2 md:gap-5">
+            <nav className="hidden items-center gap-5 text-sm text-[var(--muted)] md:flex">
+              {links.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-full px-3 py-2 md:px-2 md:py-1 transition-colors hover:bg-[var(--highlight)]/60 hover:text-[var(--accent)]"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
             <SearchBox />
             <RssIcon />
             <button
               type="button"
               onClick={() => setOpen((prev) => !prev)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm text-[var(--foreground)] transition-colors hover:border-[var(--accent-strong)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm text-[var(--foreground)] transition-colors hover:border-[var(--accent-strong)] md:hidden"
               aria-expanded={open}
               aria-label="Toggle navigation"
             >

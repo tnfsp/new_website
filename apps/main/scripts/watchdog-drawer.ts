@@ -80,12 +80,16 @@ async function main() {
     problems.push(`content/drawer.json 不存在（sync 沒跑過？）`);
   } else {
     let cards: Array<{ date?: string }> = [];
+    let parseFailed = false;
     try {
       cards = JSON.parse(await readFile(DRAWER_PATH, "utf-8"));
     } catch {
+      parseFailed = true;
       problems.push(`content/drawer.json 壞了，無法解析。`);
     }
-    if (Array.isArray(cards) && cards.length === 0) {
+    // 解析失敗時 cards 還是預設的 []——不要再多報一個「抽屜是空的」，
+    // 檔案壞掉和真的空掉是兩回事。
+    if (!parseFailed && Array.isArray(cards) && cards.length === 0) {
       problems.push(`抽屜是空的（0 張碎片）。`);
     } else if (Array.isArray(cards) && cards.length > 0) {
       const newest = cards

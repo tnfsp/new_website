@@ -4,6 +4,8 @@
  * 用法：
  *   npm run newsletter -- <slug>            # 建立 Resend Broadcast 草稿（不寄出）
  *   npm run newsletter -- <slug> --send     # 建立並直接寄出
+ *   npm run newsletter -- --send-existing <broadcastId>
+ *       # 寄出「既有」草稿（不會建新的）。草稿模式跑完會印出這行指令。
  *   npm run newsletter -- <slug> --preview  # 只輸出信件 HTML 到暫存檔（不需要 env）
  *   npm run newsletter -- <slug> --force    # 允許非週報類型或非 Published 狀態（預設兩者都擋）
  *   npm run newsletter -- <slug> --intro "這期想說的話"
@@ -11,8 +13,11 @@
  *       # 永遠 optional——沒給就直接從週報內容開始，承諾不因此打折。
  *       # 多段落用 \n 分隔。
  *
- * 預設行為是「只建草稿」：到 Resend dashboard 預覽確認後再按送出，
- * 或確認無誤後加 --send 重跑。誤寄無法收回，所以不做全自動。
+ * 預設行為是「只建草稿」：到 Resend dashboard 預覽（要改就直接在 dashboard 改），
+ * 確認無誤後用 --send-existing <broadcastId> 寄出「同一個」草稿。
+ * 注意：不要用 --send 重跑——那會「再建立一個新的」broadcast 並寄出，
+ * 你在 dashboard 上做的任何修改都會被丟掉。
+ * 誤寄無法收回，所以不做全自動。
  *
  * 需要環境變數（.env.local 或 shell）：
  *   RESEND_API_KEY     — Resend API key
@@ -100,18 +105,47 @@ async function main() {
   const previewOnly = args.includes("--preview");
   const introIdx = args.indexOf("--intro");
   const intro = introIdx !== -1 ? args[introIdx + 1] : undefined;
-  // 找 slug 時要跳過 --intro 的值，不然開場白會被誤認成 slug
+  const sendExistingIdx = args.indexOf("--send-existing");
+  const sendExistingId =
+    sendExistingIdx !== -1 ? args[sendExistingIdx + 1] : undefined;
+  // 找 slug 時要跳過 --intro / --send-existing 的值，不然它們會被誤認成 slug
   const slug = args.find(
-    (a, i) => !a.startsWith("--") && (introIdx === -1 || i !== introIdx + 1)
+    (a, i) =>
+      !a.startsWith("--") &&
+      (introIdx === -1 || i !== introIdx + 1) &&
+      (sendExistingIdx === -1 || i !== sendExistingIdx + 1)
   );
   if (introIdx !== -1 && (!intro || intro.startsWith("--"))) {
     console.error("--intro 後面要接開場白文字（用引號包起來）");
     process.exit(1);
   }
 
+  // --send-existing：寄出 dashboard 上已存在的草稿（含在 dashboard 做的修改），
+  // 而不是重建一個新的 broadcast。不需要 slug。
+  if (sendExistingIdx !== -1) {
+    if (!sendExistingId || sendExistingId.startsWith("--")) {
+      console.error("--send-existing 後面要接 broadcast id");
+      process.exit(1);
+    }
+    const existingApiKey = process.env.RESEND_API_KEY;
+    if (!existingApiKey) {
+      console.error("缺少環境變數：RESEND_API_KEY");
+      process.exit(1);
+    }
+    const resend = new Resend(existingApiKey);
+    const sent = await resend.broadcasts.send(sendExistingId);
+    if (sent.error) {
+      console.error("寄出失敗：", sent.error);
+      process.exit(1);
+    }
+    console.log(`📨 已寄出既有 Broadcast：${sendExistingId}`);
+    return;
+  }
+
   if (!slug) {
     console.error(
-      '用法：npm run newsletter -- <slug> [--send|--preview] [--force] [--intro "開場白"]'
+      '用法：npm run newsletter -- <slug> [--send|--preview] [--force] [--intro "開場白"]\n' +
+        "　　　npm run newsletter -- --send-existing <broadcastId>"
     );
     process.exit(1);
   }
@@ -198,7 +232,9 @@ async function main() {
     }
     console.log(`📨 已寄出「${entry.title}」`);
   } else {
-    console.log("   （未寄出——到 dashboard 確認後按送出，或加 --send 重跑）");
+    console.log("   （未寄出——到 dashboard 預覽/修改，確認後寄出「這一個」草稿：）");
+    console.log(`   npm run newsletter -- --send-existing ${created.data.id}`);
+    console.log("   （不要加 --send 重跑：那會建立並寄出另一個新的 broadcast，dashboard 上的修改會被丟掉）");
   }
 }
 

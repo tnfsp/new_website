@@ -6,6 +6,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { escapeHtml } from "../lib/escape-html.js";
 
 const CONTENT_DIR = path.join(process.cwd(), "content");
 const BLOG_DIR = path.join(CONTENT_DIR, "blog");
@@ -37,25 +38,31 @@ type DailyEntry = {
 };
 
 function generateHtml(entry: { title: string; url: string; content: string; type?: string; date?: string }): string {
+  // title/type/date 是純文字，插進 HTML 前要 escape（content 本身就是 HTML，維持原樣）
   return `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>${entry.title}</title>
+  <title>${escapeHtml(entry.title)}</title>
 </head>
 <body>
   <article data-pagefind-body>
-    <h1>${entry.title}</h1>
-    ${entry.type ? `<p class="type">${entry.type}</p>` : ""}
-    ${entry.date ? `<p class="date">${entry.date}</p>` : ""}
+    <h1>${escapeHtml(entry.title)}</h1>
+    ${entry.type ? `<p class="type">${escapeHtml(entry.type)}</p>` : ""}
+    ${entry.date ? `<p class="date">${escapeHtml(entry.date)}</p>` : ""}
     <div class="content">
       ${entry.content}
     </div>
-    <a href="${entry.url}" data-pagefind-meta="url[href]"></a>
+    <a href="${escapeHtml(entry.url)}" data-pagefind-meta="url[href]"></a>
   </article>
 </body>
 </html>`;
 }
+
+/** 今天的日期（台北時區，YYYY-MM-DD），拿來擋還沒到發布日的排程文章 */
+const TODAY_TAIPEI = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(
+  new Date()
+);
 
 async function loadBlogEntries(): Promise<BlogEntry[]> {
   try {
@@ -68,8 +75,10 @@ async function loadBlogEntries(): Promise<BlogEntry[]> {
       const data = await fs.readFile(filePath, "utf-8");
       const entry = JSON.parse(data) as BlogEntry;
 
-      // Skip drafts
-      if (entry.status === "draft") continue;
+      // 和站台一致的發布慣例：管線寫的是 status: "Published"（不是 "draft"），
+      // 非 Published 或發布日還沒到（台北時區）的文章都不能進公開搜尋索引。
+      if ((entry.status || "Published") !== "Published") continue;
+      if (entry.publishedAt && entry.publishedAt.slice(0, 10) > TODAY_TAIPEI) continue;
 
       entries.push({
         ...entry,

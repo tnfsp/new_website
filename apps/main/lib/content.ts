@@ -34,6 +34,8 @@ export type BlogEntry = {
 
 
 export type MurmurEntry = {
+  /** stream.json 的穩定 id — RSS guid 用它，編輯內文才不會產生重複項目 */
+  id?: string;
   title: string;
   link: string;
   description?: string;
@@ -335,6 +337,7 @@ export async function loadStreamEntries(limit = 50): Promise<MurmurEntry[]> {
     }[];
 
     return items.slice(0, limit).map((item) => ({
+      id: item.id,
       title: item.title,
       link: item.link || "",
       description: item.text || stripHtml(item.contentHtml),

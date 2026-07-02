@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { jsonLdString } from "@/lib/json-ld";
 
 const BASE_URL = "https://wilsonchao.com";
 
@@ -160,15 +161,15 @@ export default function ClinicPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(physicianJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(physicianJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(medicalWebPageJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(medicalWebPageJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
       />
 
       <main className="clinic-page">

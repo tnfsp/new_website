@@ -1,6 +1,8 @@
 import { config as loadEnv } from "dotenv";
+import { createHash } from "crypto";
 import { mkdir, stat, writeFile, readdir, rm, unlink } from "fs/promises";
 import path from "path";
+import { writeFileAtomic } from "./lib/write-file-atomic.js";
 import { Client } from "@notionhq/client";
 import { withSyncLock } from "./lib/sync-lock.js";
 import type {
@@ -128,18 +130,22 @@ function textFromRichText(richText: RichTextItemResponse[]): string {
   return richText.map((item) => item.plain_text ?? "").join("");
 }
 
-function titleFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type !== "title") return "";
+// 所有 *FromProperty helper 都要先擋 undefined：
+// Notion 欄位被改名/刪除時 props.Xxx 會是 undefined，
+// 沒有 guard 的話整個 sync 直接 TypeError 掛掉。
+// 回傳空預設值讓它優雅降級（下游本來就會 skip 空 slug/title）。
+function titleFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "title") return "";
   return textFromRichText(property.title);
 }
 
-function richTextFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type !== "rich_text") return "";
+function richTextFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "rich_text") return "";
   return textFromRichText(property.rich_text);
 }
 
-function selectFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type !== "select" || !property.select) return "";
+function selectFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "select" || !property.select) return "";
   return property.select.name ?? "";
 }
 
@@ -148,8 +154,8 @@ function multiSelectFromProperty(property?: PageObjectResponse["properties"][str
   return property.multi_select.map((item) => item.name).filter(Boolean);
 }
 
-function dateFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type !== "date" || !property.date) return "";
+function dateFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "date" || !property.date) return "";
   return property.date.start ?? "";
 }
 
@@ -228,6 +234,11 @@ function plainTextFromBlock(block: BlockObjectResponse): string {
   }
 }
 
+/** 短 hash（8 碼 hex），拿來把 last_edited_time 揉進快取檔名 */
+function shortHash(value: string) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 8);
+}
+
 function safeExtFromUrl(url: string) {
   try {
     const { pathname } = new URL(url);
@@ -252,7 +263,10 @@ async function downloadImageForBlock(
 
   const assetDir = path.join(assetRoot, slug);
   const ext = safeExtFromUrl(sourceUrl);
-  const filename = `${block.id}${ext}`;
+  // 檔名要揉進 last_edited_time：只用 block id 的話，
+  // 在 Notion 裡「換掉」同一個 block 的圖片永遠不會重新下載（快取只看檔案存不存在）。
+  // block 一被編輯 → 檔名變 → 快取失效 → 重抓。
+  const filename = `${block.id}-${shortHash(block.last_edited_time)}${ext}`;
   const destPath = path.join(assetDir, filename);
   const publicPath = `${publicBase}/${slug}/${filename}`;
 
@@ -289,13 +303,8 @@ async function downloadProjectImage(url: string, slug: string): Promise<string |
   const destPath = path.join(assetDir, filename);
   const publicPath = `/content/projects/${slug}/${filename}`;
 
-  try {
-    await stat(destPath);
-    return publicPath;
-  } catch {
-    // file not found; proceed to download
-  }
-
+  // Cover 一律重新下載（檔案小）：只檢查存在與否的話，
+  // 在 Notion 換了封面圖但副檔名相同時永遠不會更新。
   try {
     await mkdir(assetDir, { recursive: true });
     const response = await fetch(url);
@@ -492,34 +501,46 @@ async function renderBlocksWithAssets(
   mergedHtml = mergedHtml.replace(/<\/ol>\n<ol>/g, "\n");
   mergedHtml = mergedHtml.replace(/<\/ul>\n<ul>/g, "\n");
 
-  // Convert **text** [url] pattern to clickable bold link (must be first!)
-  mergedHtml = mergedHtml.replace(
-    /\*\*([^*]+)\*\*\s*\[([^\]]+)\]/g,
-    (_, text, url) => {
-      const href = url.startsWith('http') ? url : `https://${url}`;
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer"><strong>${text}</strong></a>`;
-    }
-  );
-  // Convert remaining [URL] patterns to clickable links
-  mergedHtml = mergedHtml.replace(
-    /\[(https?:\/\/[^\]]+)\]/g,
-    (_, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${new URL(url).hostname}</a>`
-  );
-  // Handle remaining [domain.com] format (without protocol)
-  mergedHtml = mergedHtml.replace(
-    /\[([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\]]*)?)\]/g,
-    (_, domain) => `<a href="https://${domain}" target="_blank" rel="noopener noreferrer">${domain.split('/')[0]}</a>`
-  );
-  // Convert remaining **text** to <strong>
-  mergedHtml = mergedHtml.replace(
-    /\*\*([^*]+)\*\*/g,
-    (_, text) => `<strong>${text}</strong>`
-  );
-  // Convert *text* to <em> (but not inside **)
-  mergedHtml = mergedHtml.replace(
-    /(?<!\*)\*([^*]+)\*(?!\*)/g,
-    (_, text) => `<em>${text}</em>`
-  );
+  // 下面這些 markdown 風格的轉換不能碰 <pre><code> 內容——
+  // 程式碼是刻意 escape 過的原文，`**kwargs` 或 `[example.com]` 一旦被
+  // 轉成 <strong>/<a> 就毀了。先把 <pre>...</pre> 區段切出來（split 保留
+  // delimiter），只對非 pre 的區段做轉換，最後再接回去。
+  const applyInlineTransforms = (segment: string) => {
+    let out = segment;
+    // Convert **text** [url] pattern to clickable bold link (must be first!)
+    out = out.replace(
+      /\*\*([^*]+)\*\*\s*\[([^\]]+)\]/g,
+      (_, text, url) => {
+        const href = url.startsWith('http') ? url : `https://${url}`;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer"><strong>${text}</strong></a>`;
+      }
+    );
+    // Convert remaining [URL] patterns to clickable links
+    out = out.replace(
+      /\[(https?:\/\/[^\]]+)\]/g,
+      (_, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${new URL(url).hostname}</a>`
+    );
+    // Handle remaining [domain.com] format (without protocol)
+    out = out.replace(
+      /\[([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\]]*)?)\]/g,
+      (_, domain) => `<a href="https://${domain}" target="_blank" rel="noopener noreferrer">${domain.split('/')[0]}</a>`
+    );
+    // Convert remaining **text** to <strong>
+    out = out.replace(
+      /\*\*([^*]+)\*\*/g,
+      (_, text) => `<strong>${text}</strong>`
+    );
+    // Convert *text* to <em> (but not inside **)
+    out = out.replace(
+      /(?<!\*)\*([^*]+)\*(?!\*)/g,
+      (_, text) => `<em>${text}</em>`
+    );
+    return out;
+  };
+  mergedHtml = mergedHtml
+    .split(/(<pre\b[\s\S]*?<\/pre>)/g)
+    .map((segment) => (segment.startsWith("<pre") ? segment : applyInlineTransforms(segment)))
+    .join("");
 
   return {
     markdown: rendered.markdown,
@@ -689,10 +710,9 @@ async function writeBlogEntries(entries: BlogEntry[]) {
   await cleanupBlogFiles(validSlugs);
   await Promise.all(
     entries.map((entry) =>
-      writeFile(
+      writeFileAtomic(
         path.join(BLOG_DIR, `${entry.slug}.json`),
-        JSON.stringify(entry, null, 2),
-        "utf-8"
+        JSON.stringify(entry, null, 2)
       )
     )
   );
@@ -718,12 +738,12 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
 
 async function writeSiteConfig(config: SiteConfig) {
   await mkdir(path.dirname(SITE_CONFIG_PATH), { recursive: true });
-  await writeFile(SITE_CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
+  await writeFileAtomic(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
-function urlFromProperty(property: PageObjectResponse["properties"][string]) {
-  if (property.type === "url") return property.url || "";
-  return "";
+function urlFromProperty(property?: PageObjectResponse["properties"][string]) {
+  if (!property || property.type !== "url") return "";
+  return property.url || "";
 }
 
 function firstFileUrl(property?: PageObjectResponse["properties"][string]) {
@@ -806,7 +826,7 @@ async function fetchProjects(): Promise<ProjectEntry[]> {
 
 async function writeProjects(projects: ProjectEntry[]) {
   await mkdir(path.dirname(PROJECTS_PATH), { recursive: true });
-  await writeFile(PROJECTS_PATH, JSON.stringify(projects, null, 2), "utf-8");
+  await writeFileAtomic(PROJECTS_PATH, JSON.stringify(projects, null, 2));
 }
 
 async function main() {

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getOwlEntry, getOwlPlaceholder, loadOwlEntries } from "@/lib/content";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { BASE_URL } from "@/lib/constants";
+import { jsonLdString } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const entry = slug === "_placeholder"
-    ? await getOwlPlaceholder()
+    ? // Placeholder 只給 dev/preview 看版型用，production 一律 404
+      process.env.NODE_ENV !== "production"
+      ? await getOwlPlaceholder()
+      : null
     : await getOwlEntry(slug);
 
   if (!entry) {
@@ -97,9 +101,12 @@ export default async function OwlPostPage({
   const { slug } = await params;
 
   // Allow the placeholder slug for layout review (never listed on index)
+  // — dev/preview only；production 直接 404，草稿不對外
   const entry =
     slug === "_placeholder"
-      ? await getOwlPlaceholder()
+      ? process.env.NODE_ENV !== "production"
+        ? await getOwlPlaceholder()
+        : null
       : await getOwlEntry(slug);
 
   if (!entry) {
@@ -140,7 +147,7 @@ export default async function OwlPostPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
       />
       <main className="page-shell space-y-8">
         <Link href="/owl" className="text-sm font-medium subtle-link">

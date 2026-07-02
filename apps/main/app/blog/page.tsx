@@ -136,27 +136,35 @@ export default async function BlogIndexPage({
 
       {totalPages > 1 ? (
         <div className="flex items-center justify-between pt-2 text-sm text-[var(--muted)]">
-          <Link
-            href={buildHref(Math.max(1, currentPage - 1))}
-            aria-disabled={currentPage === 1}
-            className={`underline decoration-[var(--border)] underline-offset-8 transition-colors hover:text-[var(--accent)] ${
-              currentPage === 1 ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            上一頁
-          </Link>
+          {/* 邊界時渲染 <span> 而非 <Link>：aria-disabled + pointer-events-none
+              擋得住滑鼠，擋不住鍵盤 Enter */}
+          {currentPage === 1 ? (
+            <span className="underline decoration-[var(--border)] underline-offset-8 opacity-50">
+              上一頁
+            </span>
+          ) : (
+            <Link
+              href={buildHref(currentPage - 1)}
+              className="underline decoration-[var(--border)] underline-offset-8 transition-colors hover:text-[var(--accent)]"
+            >
+              上一頁
+            </Link>
+          )}
           <span>
             第 {currentPage} / {totalPages} 頁
           </span>
-          <Link
-            href={buildHref(Math.min(totalPages, currentPage + 1))}
-            aria-disabled={currentPage === totalPages}
-            className={`underline decoration-[var(--border)] underline-offset-8 transition-colors hover:text-[var(--accent)] ${
-              currentPage === totalPages ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            下一頁
-          </Link>
+          {currentPage === totalPages ? (
+            <span className="underline decoration-[var(--border)] underline-offset-8 opacity-50">
+              下一頁
+            </span>
+          ) : (
+            <Link
+              href={buildHref(currentPage + 1)}
+              className="underline decoration-[var(--border)] underline-offset-8 transition-colors hover:text-[var(--accent)]"
+            >
+              下一頁
+            </Link>
+          )}
         </div>
       ) : null}
     </main>
