@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   alternates: { canonical: BASE_URL },
 };
 
+// 排程發布（publishedAt 到期自動上線）需要定期重算——
+// 沒有 revalidate 的話「最近寫的」只會在 deploy 時更新
+export const revalidate = 300;
+
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",

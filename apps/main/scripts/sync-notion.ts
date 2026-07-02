@@ -13,6 +13,18 @@ import type {
 
 loadEnv({ path: ".env.local" });
 
+/**
+ * ⚠️ 內容管線已遷移到 sync-vault（Obsidian vault 是 source of truth）。
+ * 這支 script 只會「新增/更新」Notion 來的文章，不會動 vault 產出的檔案：
+ * 刪除舊檔（cleanup）必須明確傳 --prune，而且一次要刪超過
+ * PRUNE_SAFETY_LIMIT 個檔案時會拒絕執行（除非再加 --force）。
+ * 沒有這道保險的話，跑一次 sync:notion 會把所有 vault 文章全部刪光。
+ */
+const argv = process.argv.slice(2);
+const PRUNE = argv.includes("--prune");
+const FORCE = argv.includes("--force");
+const PRUNE_SAFETY_LIMIT = 10;
+
 type BlogEntry = {
   id: string;
   slug: string;
@@ -552,9 +564,31 @@ async function fetchAllBlocks(blockId: string): Promise<BlockObjectResponse[]> {
   return blocks;
 }
 
+/**
+ * databases.query 一頁最多 100 筆——一定要跟著 next_cursor 翻完，
+ * 不然第 101 篇之後的文章會被靜默漏掉（進而被 --prune 誤刪）。
+ */
+async function queryAllPages(
+  params: Parameters<typeof notion.databases.query>[0]
+): Promise<PageObjectResponse[]> {
+  const pages: PageObjectResponse[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await notion.databases.query({
+      ...params,
+      start_cursor: cursor,
+    });
+    for (const page of response.results) {
+      if ("properties" in page) pages.push(page as PageObjectResponse);
+    }
+    cursor = response.has_more ? response.next_cursor ?? undefined : undefined;
+  } while (cursor);
+  return pages;
+}
+
 async function fetchBlogEntries(): Promise<BlogEntry[]> {
   const blogSlugs = new Set<string>();
-  const response = await notion.databases.query({
+  const pages = await queryAllPages({
     database_id: BLOG_DATABASE_ID!,
     filter: {
       property: "Status",
@@ -570,9 +604,7 @@ async function fetchBlogEntries(): Promise<BlogEntry[]> {
 
   const entries: BlogEntry[] = [];
 
-  for (const page of response.results) {
-    if (!("properties" in page)) continue;
-    const typedPage = page as PageObjectResponse;
+  for (const typedPage of pages) {
     const props = typedPage.properties;
     const title = titleFromProperty(props.Title);
     const rawSlug = richTextFromProperty(props.Slug);
@@ -619,18 +651,36 @@ async function fetchBlogEntries(): Promise<BlogEntry[]> {
 async function cleanupBlogFiles(validSlugs: Set<string>) {
   await mkdir(BLOG_DIR, { recursive: true });
   const existing = await readdir(BLOG_DIR).catch(() => []);
-  await Promise.all(
-    existing
-      .filter((file) => file.endsWith(".json"))
-      .filter((file) => !validSlugs.has(path.basename(file, ".json")))
-      .map((file) => unlink(path.join(BLOG_DIR, file)))
-  );
+  const staleFiles = existing
+    .filter((file) => file.endsWith(".json"))
+    .filter((file) => !validSlugs.has(path.basename(file, ".json")));
 
   const assetDirs = await readdir(BLOG_ASSET_DIR).catch(() => []);
+  const staleDirs = assetDirs.filter((dir) => !validSlugs.has(dir));
+
+  if (staleFiles.length === 0 && staleDirs.length === 0) return;
+
+  if (!PRUNE) {
+    console.log(
+      `[sync-notion] ${staleFiles.length} 個 json / ${staleDirs.length} 個 asset 目錄` +
+        ` 不在本次 Notion 結果裡（可能是 vault 管的文章）。不刪除；要清理請加 --prune。`
+    );
+    return;
+  }
+
+  const total = staleFiles.length + staleDirs.length;
+  if (total > PRUNE_SAFETY_LIMIT && !FORCE) {
+    throw new Error(
+      `[sync-notion] --prune 想刪 ${total} 個檔案/目錄（> ${PRUNE_SAFETY_LIMIT}），` +
+        `太可疑了（Notion 查詢被截斷？vault 文章不在 Notion？）。確定要刪就加 --force。\n` +
+        `將被刪除：${[...staleFiles, ...staleDirs].join(", ")}`
+    );
+  }
+
+  console.log(`[sync-notion] --prune：刪除 ${staleFiles.join(", ")} ${staleDirs.join(", ")}`);
+  await Promise.all(staleFiles.map((file) => unlink(path.join(BLOG_DIR, file))));
   await Promise.all(
-    assetDirs
-      .filter((dir) => !validSlugs.has(dir))
-      .map((dir) => rm(path.join(BLOG_ASSET_DIR, dir), { recursive: true, force: true }))
+    staleDirs.map((dir) => rm(path.join(BLOG_ASSET_DIR, dir), { recursive: true, force: true }))
   );
 }
 
@@ -649,15 +699,13 @@ async function writeBlogEntries(entries: BlogEntry[]) {
 }
 
 async function fetchSiteConfig(): Promise<SiteConfig> {
-  const response = await notion.databases.query({
+  const pages = await queryAllPages({
     database_id: SITE_CONFIG_DATABASE_ID!,
   });
 
   const config: SiteConfig = {};
 
-  for (const page of response.results) {
-    if (!("properties" in page)) continue;
-    const typedPage = page as PageObjectResponse;
+  for (const typedPage of pages) {
     const props = typedPage.properties;
     const key = titleFromProperty(props.Key);
     const value = richTextFromProperty(props.Value);
@@ -692,16 +740,14 @@ async function fetchProjects(): Promise<ProjectEntry[]> {
     return [];
   }
 
-  const response = await notion.databases.query({
+  const pages = await queryAllPages({
     database_id: PROJECTS_DATABASE_ID,
   });
 
   const projects: ProjectEntry[] = [];
   const projectSlugs = new Set<string>();
 
-  for (const page of response.results) {
-    if (!("properties" in page)) continue;
-    const typedPage = page as PageObjectResponse;
+  for (const typedPage of pages) {
     const props = typedPage.properties;
     const title = titleFromProperty(props.Title);
     const description = richTextFromProperty(props.Description ?? props.Summary ?? props.Body);

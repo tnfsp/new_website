@@ -101,7 +101,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     "@type": "Article",
     headline: entry.title,
     description: entry.excerpt || entry.description || "",
-    image: entry.image || `${BASE_URL}/avatar.png`,
+    // JSON-LD 的 image 要絕對 URL（entry.image 是 /content/... 相對路徑，
+    // Google Article rich result 不收相對路徑）
+    image: entry.image ? new URL(entry.image, BASE_URL).href : `${BASE_URL}/avatar.png`,
     datePublished: entry.publishedAt,
     author: {
       "@type": "Person",

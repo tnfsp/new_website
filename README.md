@@ -13,7 +13,10 @@ Next.js (App Router) + TypeScript + Tailwind site for Dr. Yi-Hsiang Chao. Visual
 2. Run dev server: `npm run dev`
 3. Lint: `npm run lint`
 4. Build: `npm run build`
-5. Sync Notion content: `npm run sync:notion`
+5. Sync vault content (source of truth): `npm run sync:vault`
+   - Obsidian vault 是內容的 source of truth（Blog/Daily/週報）；`OBSIDIAN_VAULT_PATH` 可覆寫預設 iCloud 路徑。
+6. (Legacy) Sync Notion content: `npm run sync:notion`
+   - ⚠️ 內容管線已遷移到 sync-vault。此 script 只新增/更新 Notion 文章，不會刪 vault 產出的檔案；清理舊檔要明確傳 `--prune`（一次刪超過 10 個需再加 `--force`）。
    - Env vars: `NOTION_TOKEN`, `NOTION_BLOG_DATABASE_ID`, `NOTION_SITE_CONFIG_DATABASE_ID`, optional `NOTION_PROJECTS_DATABASE_ID`
    - Writes to `content/blog/*.json`, `content/site/config.json`, `content/projects.json`; missing env vars skip sync gracefully.
    - Runs with `node --no-deprecation --import ./scripts/register-ts-node.mjs`.

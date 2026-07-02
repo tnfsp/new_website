@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "edge";
 
 const hasKV = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+
+// slug 含中文（如 週報索引），所以用 unicode letter/number + dash/underscore
+const SLUG_RE = /^[\p{L}\p{N}_-]{1,80}$/u;
 
 type Counts = { total: number };
 
@@ -37,9 +41,17 @@ function incrementInMemory(slug: string): Counts {
   return next;
 }
 
-export async function GET(request: Request) {
+function validateSlug(request: Request): string | null {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug") || "home";
+  return SLUG_RE.test(slug) ? slug : null;
+}
+
+export async function GET(request: Request) {
+  const slug = validateSlug(request);
+  if (!slug) {
+    return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
+  }
 
   try {
     const counts = hasKV ? await getWithKV(slug) : getInMemory(slug);
@@ -51,10 +63,24 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug") || "home";
+  const slug = validateSlug(request);
+  if (!slug) {
+    return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
+  }
 
   try {
+    if (hasKV) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const { allowed } = await rateLimit(`likes:${ip}`, {
+        limit: 30,
+        windowSeconds: 60,
+      });
+      if (!allowed) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    }
+
     const counts = hasKV ? await incrementWithKV(slug) : incrementInMemory(slug);
     return NextResponse.json(counts, { status: 200 });
   } catch (error) {

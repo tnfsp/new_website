@@ -1,9 +1,9 @@
-import { kv } from "@vercel/kv";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { escapeHtml } from "@/lib/escape-html";
 import { notifyOwnerEmail } from "@/lib/notify";
+import { pushToKvList } from "@/lib/kv-list";
 
 /**
  * 抽屜「丟一張紙條」——訪客出題。
@@ -76,10 +76,11 @@ export async function POST(request: NextRequest) {
     };
 
     // 進 KV 排隊（best-effort）——Owl 之後從這撈。
+    // Redis list：lpush 原子 append，兩張紙條同時丟進來不會互相蓋掉。
+    // （給 OWL 的讀取合約：LRANGE drawer:questions 0 -1，newest first）
     let stored = false;
     try {
-      const existing = (await kv.get<DrawerQuestion[]>(KV_KEY)) || [];
-      await kv.set(KV_KEY, [item, ...existing]);
+      await pushToKvList(KV_KEY, item, 1000);
       stored = true;
     } catch (err) {
       console.error("[drawer-question] KV 儲存失敗:", err);

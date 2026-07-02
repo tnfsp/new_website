@@ -1,9 +1,9 @@
-import { kv } from "@vercel/kv";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { escapeHtml } from "@/lib/escape-html";
 import { notifyOwnerEmail } from "@/lib/notify";
+import { pushToKvList } from "@/lib/kv-list";
 
 /**
  * 抽屜「簽到本」——私密版。
@@ -73,10 +73,10 @@ export async function POST(request: NextRequest) {
     };
 
     // 存 KV 當備份（best-effort——KV 掛了也別讓留言整個丟掉，靠 Telegram 補）。
+    // Redis list：lpush 原子 append，兩個人同時留言不會互相蓋掉。
     let stored = false;
     try {
-      const existing = (await kv.get<DrawerNote[]>(KV_KEY)) || [];
-      await kv.set(KV_KEY, [note, ...existing]);
+      await pushToKvList(KV_KEY, note, 1000);
       stored = true;
     } catch (err) {
       console.error("[drawer-note] KV 儲存失敗:", err);

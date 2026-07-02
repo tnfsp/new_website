@@ -6,6 +6,7 @@ import {
   linkItems as baseLinkItems,
   placeholderBlogs,
 } from "./placeholders";
+import { todayInTaipei } from "./date";
 
 const BLOG_DIR = path.join(process.cwd(), "content", "blog");
 const OWL_DIR = path.join(process.cwd(), "content", "owl");
@@ -99,7 +100,7 @@ function firstImageFromEntry(entry: BlogEntry) {
   if (!source) return undefined;
   const match = source.match(/<img[^>]*src=["']([^"']+)["']/i);
   if (match?.[1]) return match[1];
-  const md = source.match(/!\[[^\]]*]\(([\S)]+)(?:\s+"[^"]*")?\)/);
+  const md = source.match(/!\[[^\]]*]\(([^\s)]+)(?:\s+"[^"]*")?\)/);
   return md?.[1];
 }
 
@@ -133,12 +134,16 @@ export async function loadBlogEntries(): Promise<BlogEntry[]> {
       const status = parsed.status || "Published";
       if (status !== "Published") continue;
 
-      // Scheduled publishing: skip entries with publishedAt in the future
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      if (parsed.publishedAt && parsed.publishedAt > today) continue;
+      // Scheduled publishing: skip entries with publishedAt in the future.
+      // 以台北日期為準；slice(0,10) 讓帶時間的 publishedAt 也能正確比較
+      const today = todayInTaipei();
+      if (parsed.publishedAt && parsed.publishedAt.slice(0, 10) > today) continue;
 
       entries.push({
         ...parsed,
+        // 舊 Notion 資料用中文 type「週報」，統一正規化成 weekly，
+        // 讓 /blog?type=weekly 的篩選抓得到全部週報
+        type: parsed.type === "週報" ? "weekly" : parsed.type,
         excerpt: inferExcerpt(parsed.contentHtml, parsed.content, parsed.description || parsed.excerpt),
         readingTime: inferReadingTime(parsed),
         image: parsed.image || firstImageFromEntry(parsed),
@@ -188,9 +193,9 @@ export async function loadOwlEntries(): Promise<OwlEntry[]> {
       const status = parsed.status || "Draft";
       if (status !== "Published") continue;
 
-      // Scheduled publishing: skip entries with publishedAt in the future
-      const today = new Date().toISOString().split("T")[0];
-      if (parsed.publishedAt && parsed.publishedAt > today) continue;
+      // Scheduled publishing: skip entries with publishedAt in the future（台北日期）
+      const today = todayInTaipei();
+      if (parsed.publishedAt && parsed.publishedAt.slice(0, 10) > today) continue;
 
       entries.push({
         ...parsed,

@@ -17,7 +17,12 @@ const MONTHS_ZH = ["1月","2月","3月","4月","5月","6月","7月","8月","9月
 const DAYS_ZH = ["", "一", "", "三", "", "五", ""];
 
 function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // 用 local 日期組 key——cursor 是 local 午夜，toISOString() 會轉成 UTC，
+  // 對 UTC+8 的訪客（也就是主要讀者）來說每一格都會偏移一天
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function WritingHeatmap({ weeks = 52 }: { weeks?: number }) {

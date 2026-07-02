@@ -153,4 +153,9 @@ async function main() {
   await fs.rm(SEARCH_DIR, { recursive: true, force: true });
 }
 
-main().catch(console.error);
+// postbuild：這裡失敗必須讓 build 一起失敗，
+// 不然壞掉的搜尋索引會以「成功」之姿上 production
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

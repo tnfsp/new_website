@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { kv } from "@vercel/kv";
+import { rateLimit } from "@/lib/rate-limit";
+import { todayInTaipei } from "@/lib/date";
 
 export const runtime = "edge";
 
 const hasKV = Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+
+// slug 含中文（如 週報索引），所以用 unicode letter/number + dash/underscore
+const SLUG_RE = /^[\p{L}\p{N}_-]{1,80}$/u;
 
 type Counts = { today: number; total: number };
 
@@ -14,7 +19,7 @@ const memoryStore: Map<string, Counts> =
 globalThis.__VIEW_MEMORY__ = memoryStore;
 
 async function incrementWithKV(slug: string): Promise<Counts> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInTaipei();
   const totalKey = `views:${slug}:total`;
   const todayKey = `views:${slug}:today:${today}`;
 
@@ -31,7 +36,7 @@ async function incrementWithKV(slug: string): Promise<Counts> {
 }
 
 function incrementInMemory(slug: string): Counts {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInTaipei();
   const key = `${slug}:${today}`;
   const prev = memoryStore.get(key) || { today: 0, total: 0 };
   const next = { today: prev.today + 1, total: prev.total + 1 };
@@ -42,8 +47,23 @@ function incrementInMemory(slug: string): Counts {
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug") || "home";
+  if (!SLUG_RE.test(slug)) {
+    return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
+  }
 
   try {
+    if (hasKV) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const { allowed } = await rateLimit(`views:${ip}`, {
+        limit: 60,
+        windowSeconds: 60,
+      });
+      if (!allowed) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    }
+
     const counts = hasKV ? await incrementWithKV(slug) : incrementInMemory(slug);
     return NextResponse.json(counts, { status: 200 });
   } catch (error) {

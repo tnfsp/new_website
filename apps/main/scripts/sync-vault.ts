@@ -147,14 +147,19 @@ async function processImages(
     return `${publicBase}/${slug}/${filename}`;
   }
 
-  // Fallback: recursive search entire Vault for a filename
+  // Fallback: recursive search entire Vault for a filename.
+  // execFileSync（參數陣列）而不是 execSync（字串插值）——
+  // 筆記裡的檔名是不可信輸入，字串插值會讓 $(...)、反引號被 shell 展開。
   async function findInVault(filename: string): Promise<string | undefined> {
-    const { execSync } = await import("child_process");
+    const { execFileSync } = await import("child_process");
     try {
-      const result = execSync(
-        `find "${VAULT_ROOT}" -name "${filename.replace(/"/g, '\\"')}" -type f 2>/dev/null | head -1`,
+      const result = execFileSync(
+        "find",
+        [VAULT_ROOT, "-name", filename, "-type", "f"],
         { encoding: "utf-8", timeout: 10000 }
-      ).trim();
+      )
+        .split("\n")[0]
+        .trim();
       return result || undefined;
     } catch {
       return undefined;
@@ -265,6 +270,40 @@ function mdToHtml(md: string): string {
   return html;
 }
 
+// ─── frontmatter helpers ─────────────────────────────────────────────
+
+/**
+ * slug 會被拿去 path.join 寫檔（content/blog/<slug>.json、asset 目錄），
+ * frontmatter 是不可信輸入：`slug: ../../lib/x` 會寫到 blog 目錄外。
+ * 只保留 letter/number/dash/underscore（含中文），其餘替換成 dash。
+ */
+function safeSlug(fmSlug: unknown, file: string): string {
+  const raw = String(fmSlug || path.basename(file, ".md")).trim();
+  const cleaned = raw.replace(/[^\p{L}\p{N}_-]/gu, "-").replace(/^-+|-+$/g, "");
+  if (cleaned !== raw) {
+    console.warn(`[sync-vault] ⚠️  slug "${raw}" 含非法字元，已正規化為 "${cleaned}"（${path.basename(file)}）`);
+  }
+  return cleaned;
+}
+
+/**
+ * 日期正規化成台北時區的 YYYY-MM-DD。
+ * gray-matter 把 `date: 2026-07-02` 解析成 UTC 午夜的 Date（安全），
+ * 但帶時間+時差的日期（如 2026-07-02T00:30+08:00）用 toISOString 切
+ * 會變成前一天——所以 Date 物件一律用 Asia/Taipei 格式化。
+ */
+const TAIPEI_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" });
+function normalizeDate(rawDate: unknown): string {
+  if (rawDate instanceof Date) return TAIPEI_DATE.format(rawDate);
+  return rawDate ? String(rawDate).slice(0, 10) : "";
+}
+
+/** YAML `tags: diary` 會解析成 string，統一包成 string[]。 */
+function normalizeTags(rawTags: unknown): string[] {
+  if (Array.isArray(rawTags)) return rawTags.map(String);
+  return rawTags ? [String(rawTags)] : [];
+}
+
 // ─── Blog sync ───────────────────────────────────────────────────────
 async function syncBlog(): Promise<BlogEntry[]> {
   const files = await listMdFiles(VAULT_BLOG);
@@ -281,7 +320,7 @@ async function syncBlog(): Promise<BlogEntry[]> {
       console.warn(`[sync-vault] ⚠️  Blog "${path.basename(file)}" missing frontmatter 'description' — excerpt will be auto-generated (may be too long)`);
     }
 
-    const slug = fm.slug || path.basename(file, ".md");
+    const slug = safeSlug(fm.slug, file);
     const title = fm.title || path.basename(file, ".md");
 
     // Strip leading H1 if it matches frontmatter title (avoid duplicate)
@@ -349,15 +388,13 @@ async function syncBlog(): Promise<BlogEntry[]> {
       title,
       type: fm.type || "",
       status: "Published",
-      publishedAt: fm.date instanceof Date
-        ? fm.date.toISOString().slice(0, 10)
-        : fm.date ? String(fm.date).slice(0, 10) : "",
+      publishedAt: normalizeDate(fm.date),
       content: processedMd.trim(),
       contentHtml,
       description: description || undefined,
       excerpt,
       readingTime,
-      tags: fm.tags || [],
+      tags: normalizeTags(fm.tags),
       ...(image ? { image } : {}),
       ...(fm.related?.length ? { related: fm.related } : {}),
     });
@@ -381,15 +418,11 @@ async function syncProjects(): Promise<BlogEntry[]> {
     if (fm.published === false) continue;
 
     const isWeekly = file.startsWith(VAULT_WEEKLY);
-    const slug = fm.slug || path.basename(file, ".md");
+    const slug = safeSlug(fm.slug, file);
     const title = fm.title || path.basename(file, ".md");
     const type = fm.type || (isWeekly ? "weekly" : "life");
     const sourceDir = isWeekly ? VAULT_WEEKLY : VAULT_DAILY;
-    // Normalize date — gray-matter may parse bare dates as Date objects
-    const rawDate = fm.date;
-    const dateStr = rawDate instanceof Date
-      ? rawDate.toISOString().slice(0, 10)
-      : rawDate ? String(rawDate).slice(0, 10) : "";
+    const dateStr = normalizeDate(fm.date);
 
     // Strip leading H1 if it matches frontmatter title (avoid duplicate)
     let cleanBody = body;
@@ -460,7 +493,7 @@ async function syncProjects(): Promise<BlogEntry[]> {
       description: description || undefined,
       excerpt,
       readingTime,
-      tags: fm.tags || [],
+      tags: normalizeTags(fm.tags),
       ...(image ? { image } : {}),
     });
   }
@@ -549,7 +582,16 @@ async function syncConfig(): Promise<SiteConfig> {
 // ─── write helpers ───────────────────────────────────────────────────
 async function writeBlogEntries(entries: BlogEntry[]) {
   await mkdir(BLOG_DIR, { recursive: true });
+  const seen = new Map<string, string>();
   for (const entry of entries) {
+    // Blog/、Daily/、週報/ 之間同名檔案會靜默互吃（last write wins）——至少要吼一聲
+    const prev = seen.get(entry.slug);
+    if (prev) {
+      console.warn(
+        `[sync-vault] ⚠️  slug 衝突："${entry.slug}"（${prev} vs ${entry.title}）——後者會蓋掉前者`
+      );
+    }
+    seen.set(entry.slug, entry.title);
     await writeFile(
       path.join(BLOG_DIR, `${entry.slug}.json`),
       JSON.stringify(entry, null, 2),
@@ -559,6 +601,9 @@ async function writeBlogEntries(entries: BlogEntry[]) {
 }
 
 async function writeProjectsCompat() {
+  // 只在檔案不存在時補一個空的 []（backward compat）——
+  // 不要每次 sync 都覆蓋，萬一其他來源寫了內容會被清空
+  if (existsSync(PROJECTS_PATH)) return;
   await mkdir(path.dirname(PROJECTS_PATH), { recursive: true });
   await writeFile(PROJECTS_PATH, JSON.stringify([], null, 2), "utf-8");
 }
