@@ -54,6 +54,22 @@ function absolutifyUrls(html: string): string {
     .replace(/(src|href)="\/(?!\/)/g, `$1="${SITE_URL}/`);
 }
 
+/**
+ * email client 沒有 CSS reset：contentHtml 裡的 <img> 若沒有 inline style，
+ * 會用「原始像素寬」渲染。手機拍的照片動輒 4032px，直接撐爆 560px 的容器，
+ * 整封信的版就跑掉（#024 實例）。網頁版有 CSS 所以看不出來。
+ * width 屬性是給 Outlook（Word 引擎會忽略 max-width）。
+ */
+const EMAIL_BODY_WIDTH = 528; // 560 容器 - 左右各 16 padding
+function inlineImageStyles(html: string): string {
+  return html
+    .replace(/<figure(\s|>)/g, '<figure style="margin:0 0 24px;"$1')
+    .replace(/<figcaption(\s|>)/g, '<figcaption style="font-size:13px;line-height:1.7;color:#00505f;margin-top:8px;"$1')
+    .replace(/<img\b(?![^>]*\bstyle=)([^>]*?)\/?>/g, (_m, attrs) =>
+      `<img${attrs} width="${EMAIL_BODY_WIDTH}" style="display:block;width:100%;max-width:100%;height:auto;border-radius:12px;" />`
+    );
+}
+
 function newsletterHtml(entry: BlogEntry, intro?: string): string {
   // email 限定開場白：只有訂閱者看得到的幾句話，放在週報內容之前
   // shell 傳進來的 \n 是字面「反斜線+n」兩個字元，和真的換行都接受
@@ -73,7 +89,7 @@ function newsletterHtml(entry: BlogEntry, intro?: string): string {
     ? `<img src="${escapeHtml(entry.image.startsWith("http") ? entry.image : SITE_URL + entry.image)}" alt="${escapeHtml(entry.title)}" style="width:100%;border-radius:12px;margin-bottom:24px;" />`
     : "";
 
-  const body = absolutifyUrls(entry.contentHtml ?? "");
+  const body = inlineImageStyles(absolutifyUrls(entry.contentHtml ?? ""));
   const postUrl = `${SITE_URL}/blog/${encodeURIComponent(entry.slug)}`;
 
   return `
