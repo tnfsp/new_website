@@ -97,7 +97,7 @@ function newsletterHtml(entry: BlogEntry, intro?: string): string {
       ${introBlock}
       ${cover}
       <h1 style="font-size:1.5em;line-height:1.4;margin:0 0 24px;">${escapeHtml(entry.title)}</h1>
-      <div style="line-height:1.9;">
+      <div style="line-height:1.9;overflow-wrap:anywhere;word-break:break-word;">
         ${body}
       </div>
       <div style="line-height:1.9;margin-top:32px;">
